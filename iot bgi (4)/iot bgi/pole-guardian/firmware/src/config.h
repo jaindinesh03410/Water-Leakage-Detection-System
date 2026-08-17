@@ -3,8 +3,8 @@
 
 #define WIFI_SSID "YOUR_WIFI_SSID"
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
-#define API_KEY "AIzaSyApd72oTFdydyVaWEGBfhYT3UTCzbJ_LIU"
-#define DATABASE_URL "https://iot-bgi-default-rtdb.asia-southeast1.firebasedatabase.app/"
+#define API_KEY "Api Dalni h idher"
+#define DATABASE_URL "DAta base url dalna h idher"
 
 #define VIB_PIN 14
 #define FLOW_PIN 34
