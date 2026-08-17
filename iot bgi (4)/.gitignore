@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+.env
+*.env
+firebase-key.json
+serviceAccountKey.json
+credentials.json
+
+node_modules/
+*.log

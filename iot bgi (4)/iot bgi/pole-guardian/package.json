@@ -1,0 +1,40 @@
+{
+  "name": "pole-guardian",
+  "version": "1.0.0",
+  "description": "PoleGuardian Smart Water Intelligence System - Industrial IoT water monitoring solution",
+  "main": "index.js",
+  "scripts": {
+    "install-all": "npm run install-dashboard && npm run install-firebase",
+    "install-dashboard": "cd dashboard && npm install",
+    "install-firebase": "cd firebase && npm install -g firebase-tools",
+    "dev": "cd dashboard && npm run dev",
+    "build": "cd dashboard && npm run build",
+    "deploy": "cd firebase && firebase deploy",
+    "deploy-rules": "cd firebase && firebase deploy --only database",
+    "deploy-hosting": "cd firebase && firebase deploy --only hosting",
+    "test": "cd dashboard && npm run test",
+    "lint": "cd dashboard && npm run lint",
+    "setup": "npm run install-all && echo 'Setup complete! Please configure Firebase credentials.'",
+    "start": "npm run dev"
+  },
+  "keywords": [
+    "iot",
+    "water-monitoring",
+    "esp32",
+    "firebase",
+    "react",
+    "ai-analytics",
+    "industrial",
+    "smart-sensors"
+  ],
+  "author": "PoleGuardian Team",
+  "license": "PROPRIETARY",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/pole-guardian.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

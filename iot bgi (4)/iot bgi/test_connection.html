@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 20px auto; 
+            padding: 20px;
+            background: #0b0e14;
+            color: #fff;
+        }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+        }
+        .success { background: #1a4d3a; color: #4ade80; }
+        .error { background: #4d1a1a; color: #f87171; }
+        .info { background: #1a3a4d; color: #60a5fa; }
+        button { 
+            background: #00d4ff; 
+            color: #000; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 5px; 
+            cursor: pointer;
+            margin: 5px;
+        }
+        pre { 
+            background: #1a1a1a; 
+            padding: 10px; 
+            border-radius: 5px; 
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Backend API Connection Test</h1>
+    
+    <button onclick="testAllEndpoints()">Test All Endpoints</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const resultsDiv = document.getElementById('results');
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        async function testEndpoint(endpoint, description) {
+            try {
+                addResult(`🔄 Testing ${description}...`, 'info');
+                
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ ${description} - Success`, 'success');
+                    addResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                } else {
+                    addResult(`❌ ${description} - HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ ${description} - Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAllEndpoints() {
+            clearResults();
+            
+            const endpoints = [
+                { path: '/health', desc: 'Health Check' },
+                { path: '/api/sensor_data', desc: 'Sensor Data' },
+                { path: '/api/flow_data', desc: 'Flow Data' },
+                { path: '/api/alerts_live', desc: 'Live Alerts' },
+                { path: '/api/dashboard_summary', desc: 'Dashboard Summary' }
+            ];
+
+            addResult('🚀 Starting API Connection Tests...', 'info');
+            
+            for (const endpoint of endpoints) {
+                await testEndpoint(endpoint.path, endpoint.desc);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
+            }
+            
+            addResult('🎉 All tests completed!', 'success');
+        }
+
+        // Auto-run test on page load
+        window.onload = () => {
+            addResult('📱 API Connection Tester Ready', 'info');
+            addResult(`🔗 Testing connection to: ${API_BASE}`, 'info');
+        };
+    </script>
+</body>
+</html>

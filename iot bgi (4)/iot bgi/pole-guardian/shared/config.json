@@ -1,0 +1,114 @@
+{
+  "system": {
+    "name": "PoleGuardian Smart Water Intelligence System",
+    "version": "1.0.0",
+    "description": "Industrial-grade AI-powered IoT solution for water infrastructure monitoring"
+  },
+  "hardware": {
+    "esp32": {
+      "deviceIdPrefix": "esp32_",
+      "sensors": {
+        "vibration": {
+          "pin": 14,
+          "type": "digital",
+          "interrupt": true,
+          "pullup": true
+        },
+        "flow": {
+          "pin": 34,
+          "type": "analog",
+          "range": "0-3.3V",
+          "conversion": "adc",
+          "resolution": "12-bit"
+        }
+      },
+      "intervals": {
+        "dataCollection": 5000,
+        "transmission": 5000,
+        "heartbeat": 30000
+      }
+    }
+  },
+  "firebase": {
+    "region": "asia-southeast1",
+    "database": {
+      "nodes": {
+        "readings": "/readings",
+        "alerts": "/alerts",
+        "analytics": "/analytics",
+        "nodes": "/nodes",
+        "quality": "/quality"
+      }
+    },
+    "authentication": {
+      "type": "anonymous",
+      "required": true
+    }
+  },
+  "dashboard": {
+    "theme": {
+      "primary": "#0b0e14",
+      "accents": {
+        "blue": "#00d4ff",
+        "cyan": "#00ffff",
+        "purple": "#8b5cf6"
+      }
+    },
+    "layout": {
+      "columns": 4,
+      "responsive": true,
+      "glassmorphism": true
+    },
+    "animations": {
+      "library": "framer-motion",
+      "performance": "optimized"
+    }
+  },
+  "ai": {
+    "algorithms": {
+      "theftDetection": {
+        "enabled": true,
+        "threshold": 75,
+        "offHoursAnalysis": true
+      },
+      "leakDetection": {
+        "enabled": true,
+        "continuousFlowThreshold": 0.05,
+        "pressureDropThreshold": 0.1
+      },
+      "patternAnalysis": {
+        "enabled": true,
+        "machineLearning": true,
+        "seasonalAdjustment": true
+      }
+    }
+  },
+  "alerts": {
+    "types": ["leak", "theft", "pressure", "tamper", "quality"],
+    "severities": ["low", "medium", "high", "critical"],
+    "animations": true,
+    "escalation": true
+  },
+  "quality": {
+    "parameters": {
+      "tds": {
+        "unit": "ppm",
+        "excellent": "0-150",
+        "good": "150-300",
+        "fair": "300-500",
+        "poor": "500+"
+      },
+      "ph": {
+        "unit": "pH",
+        "excellent": "6.5-8.5",
+        "good": "6.0-9.0",
+        "fair": "5.5-9.5",
+        "poor": "outside range"
+      }
+    },
+    "compliance": {
+      "standards": ["WHO", "EU"],
+      "monitoring": true
+    }
+  }
+}

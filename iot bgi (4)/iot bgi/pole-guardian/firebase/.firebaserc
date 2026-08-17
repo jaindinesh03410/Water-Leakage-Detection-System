@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "pole-guardian"
+  },
+  "targets": {
+    "pole-guardian": {
+      "hosting": {
+        "dashboard": [
+          "pole-guardian"
+        ]
+      }
+    }
+  }
+}

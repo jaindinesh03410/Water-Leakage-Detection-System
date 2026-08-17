@@ -1,0 +1,110 @@
+{
+  "rules": {
+    "readings": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$deviceId": {
+        ".validate": "newData.hasChildren(['timestamp', 'deviceId', 'vibration', 'flow', 'status'])",
+        "timestamp": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "deviceId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "vibration": {
+          ".validate": "newData.isNumber() && (newData.val() == 0 || newData.val() == 1)"
+        },
+        "flow": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() == 'normal' || newData.val() == 'warning' || newData.val() == 'error')"
+        }
+      }
+    },
+    "nodes": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$nodeId": {
+        ".validate": "newData.hasChildren(['status', 'lastUpdate', 'location'])",
+        "status": {
+          ".validate": "newData.isString() && (newData.val() == 'normal' || newData.val() == 'warning' || newData.val() == 'critical')"
+        },
+        "lastUpdate": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "location": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        }
+      }
+    },
+    "alerts": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$alertId": {
+        ".validate": "newData.hasChildren(['type', 'severity', 'timestamp', 'deviceId', 'message', 'resolved'])",
+        "type": {
+          ".validate": "newData.isString() && (newData.val() == 'leak' || newData.val() == 'theft' || newData.val() == 'pressure' || newData.val() == 'tamper' || newData.val() == 'quality')"
+        },
+        "severity": {
+          ".validate": "newData.isString() && (newData.val() == 'low' || newData.val() == 'medium' || newData.val() == 'high' || newData.val() == 'critical')"
+        },
+        "timestamp": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "deviceId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "message": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "resolved": {
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "analytics": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "daily": {
+        "$date": {
+          ".validate": "newData.hasChildren(['totalFlow', 'avgPressure', 'alertCount', 'theftRisk'])",
+          "totalFlow": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "avgPressure": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "alertCount": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "theftRisk": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+          }
+        }
+      }
+    },
+    "quality": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$timestamp": {
+        ".validate": "newData.hasChildren(['tds', 'ph', 'temperature', 'rating', 'compliance'])",
+        "tds": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "ph": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 14"
+        },
+        "temperature": {
+          ".validate": "newData.isNumber()"
+        },
+        "rating": {
+          ".validate": "newData.isString() && (newData.val() == 'excellent' || newData.val() == 'good' || newData.val() == 'fair' || newData.val() == 'poor')"
+        },
+        "compliance": {
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    }
+  }
+}
