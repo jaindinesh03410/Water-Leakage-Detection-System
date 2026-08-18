@@ -3,13 +3,24 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { motion } from 'framer-motion'
 import Card from '../ui/Card.jsx'
 
-const FlowChart = ({ 
-  data = [], 
+// ── Design tokens (styling only — no data logic changed) ──────────────────────
+const DS = {
+  teal:    '#0F5C5B',
+  border:  '#E1E7E6',
+  muted:   '#5B6E6D',
+  ink:     '#132A2A',
+  red:     '#D14343',
+  grid:    '#E1E7E6',
+}
+
+const FlowChart = ({
+  data = [],
   title = "Real-time Flow Rate",
   className = '',
   height = 300,
-  animate = true 
+  animate = true
 }) => {
+  // ── Data state — untouched ────────────────────────────────────────────────
   const [chartData, setChartData] = useState([])
 
   useEffect(() => {
@@ -50,13 +61,32 @@ const FlowChart = ({
     }
   }, [data.length])
 
+  // ── Restyled tooltip — same data variables ────────────────────────────────
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="glass-card p-3 border border-accent-blue/20">
-          <p className="text-accent-blue font-medium">{`Time: ${label}`}</p>
-          <p className="text-accent-cyan">
-            {`Flow Rate: ${payload[0].value.toFixed(2)} L/min`}
+        <div style={{
+          background: '#FFFFFF',
+          border: `1px solid ${DS.border}`,
+          borderRadius: 6,
+          padding: '8px 12px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        }}>
+          <p style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 11,
+            color: DS.muted,
+            marginBottom: 4,
+          }}>
+            {label}
+          </p>
+          <p style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 13,
+            fontWeight: 600,
+            color: DS.teal,
+          }}>
+            {`${payload[0].value.toFixed(2)} L/min`}
           </p>
         </div>
       )
@@ -65,57 +95,110 @@ const FlowChart = ({
   }
 
   const content = (
-    <Card variant="neon" className={`p-6 ${className}`}>
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-        <p className="text-sm text-gray-400">Live sensor data updated every 5 seconds</p>
+    <Card variant="default" className={className} animate={false}>
+      {/* Card header */}
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <h3
+            className="text-sm font-semibold text-hs-ink mb-0.5"
+            style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+          >
+            {title}
+          </h3>
+          <p
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Live sensor data updated every 5 seconds
+          </p>
+        </div>
+        {/* Legend */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className="inline-block w-6 border-t-2"
+            style={{ borderColor: DS.teal }}
+          />
+          <span
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Flow Rate
+          </span>
+        </div>
       </div>
-      
+
+      {/* Chart — data props entirely untouched */}
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis 
-              dataKey="time" 
-              stroke="#6b7280"
-              fontSize={12}
+          <LineChart data={chartData} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+            {/* Horizontal-only light gridlines, no vertical */}
+            <CartesianGrid
+              horizontal={true}
+              vertical={false}
+              stroke={DS.grid}
+              strokeDasharray="0"
+            />
+            <XAxis
+              dataKey="time"
+              stroke={DS.muted}
+              tick={{ fill: DS.muted, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
             />
-            <YAxis 
-              stroke="#6b7280"
-              fontSize={12}
+            <YAxis
+              stroke={DS.muted}
+              tick={{ fill: DS.muted, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
-              label={{ value: 'L/min', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+              label={{
+                value: 'L/min',
+                angle: -90,
+                position: 'insideLeft',
+                style: {
+                  textAnchor: 'middle',
+                  fill: DS.muted,
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 10,
+                }
+              }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Line 
-              type="monotone" 
-              dataKey="flow" 
-              stroke="#00d4ff" 
+            {/* Teal primary line — same dataKey */}
+            <Line
+              type="monotone"
+              dataKey="flow"
+              stroke={DS.teal}
               strokeWidth={2}
-              dot={{ fill: '#00d4ff', strokeWidth: 2, r: 3 }}
-              activeDot={{ r: 5, stroke: '#00ffff', strokeWidth: 2, fill: '#00d4ff' }}
+              dot={{ fill: DS.teal, strokeWidth: 0, r: 2.5 }}
+              activeDot={{ r: 5, stroke: DS.teal, strokeWidth: 2, fill: '#FFFFFF' }}
               connectNulls={false}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
-      
-      <div className="mt-4 flex justify-between items-center text-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-accent-blue rounded-full"></div>
-            <span className="text-gray-400">Flow Rate</span>
-          </div>
-          <div className="text-accent-cyan">
-            Current: {chartData.length > 0 ? chartData[chartData.length - 1]?.flow.toFixed(2) : '0.00'} L/min
-          </div>
+
+      {/* Footer stats — same data variables, JetBrains Mono for numbers */}
+      <div className="mt-4 flex justify-between items-center">
+        <div className="flex items-center gap-1.5">
+          <span
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Current:
+          </span>
+          <span
+            className="text-sm font-semibold text-hs-teal"
+            style={{ fontFamily: 'JetBrains Mono, monospace' }}
+          >
+            {chartData.length > 0 ? chartData[chartData.length - 1]?.flow.toFixed(2) : '0.00'} L/min
+          </span>
         </div>
-        <div className="text-gray-400">
+        <span
+          className="text-xs text-hs-muted"
+          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+        >
           Last updated: {chartData.length > 0 ? new Date().toLocaleTimeString() : 'No data'}
-        </div>
+        </span>
       </div>
     </Card>
   )

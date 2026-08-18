@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Flex } from './index'
 import { StatusIndicator } from '../ui'
-import { Wifi, WifiOff, Clock, Activity, Server } from 'lucide-react'
+import { Wifi, WifiOff, Activity, Server, Clock } from 'lucide-react'
 
-const TopNavigation = ({ 
+/**
+ * TopNavigation — now renders as the top header bar inside the main content panel
+ * (the sidebar is rendered directly in App.jsx).
+ * Props are unchanged so App.jsx requires no data-binding edits.
+ */
+const TopNavigation = ({
   systemStatus = 'online',
   deviceConnected = true,
   className = '',
-  ...props 
+  ...props
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -21,135 +25,106 @@ const TopNavigation = ({
   }, [])
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
       month: 'short',
-      day: 'numeric'
+      year: 'numeric'
     })
   }
 
   const formatTime = (date) => {
     return date.toLocaleTimeString('en-US', {
       hour12: false,
-      hour: '2-digit',
+      hour:   '2-digit',
       minute: '2-digit',
       second: '2-digit'
     })
   }
 
   return (
-    <motion.nav
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className={`glass-card border-b border-white/10 ${className}`}
+    <header
+      className={`
+        bg-white border-b border-hs-border px-6 py-4
+        flex items-start justify-between gap-4
+        ${className}
+      `}
       {...props}
     >
-      <div className="px-6 py-4">
-        {/* Main Title */}
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-center mb-4"
+      {/* Left: system title */}
+      <div>
+        <h1
+          className="text-lg font-bold text-hs-ink leading-tight"
+          style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
         >
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold neon-text">
-            Smart Water Intelligence System
-          </h1>
-          <p className="text-sm md:text-base text-gray-300 mt-1">
-            PoleGuardian - Industrial IoT Water Monitoring
-          </p>
-        </motion.div>
-
-        {/* Status Bar */}
-        <Flex 
-          direction="row" 
-          justify="center" 
-          align="center" 
-          gap={6} 
-          wrap={true}
-          responsive={true}
-          className="text-sm"
+          Smart Water Intelligence System
+        </h1>
+        <p
+          className="text-xs text-hs-muted mt-0.5"
+          style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          {/* System Status */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            <StatusIndicator 
-              status={systemStatus} 
-              label={`System ${systemStatus === 'online' ? 'Online' : 'Offline'}`}
-              size="md"
-            />
-          </motion.div>
-
-          {/* Device Connection Status */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-          >
-            <Flex align="center" gap={2} animate={false}>
-              {deviceConnected ? (
-                <>
-                  <Wifi className="w-4 h-4 text-accent-blue" />
-                  <span className="text-accent-blue font-medium">Connected</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-4 h-4 text-red-400" />
-                  <span className="text-red-400 font-medium">Disconnected</span>
-                </>
-              )}
-            </Flex>
-          </motion.div>
-
-          {/* Live System Activity */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
-          >
-            <Flex align="center" gap={2} animate={false}>
-              <Activity className="w-4 h-4 text-accent-cyan animate-pulse" />
-              <span className="text-accent-cyan font-medium">Live</span>
-            </Flex>
-          </motion.div>
-
-          {/* Server Status */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.6 }}
-          >
-            <Flex align="center" gap={2} animate={false}>
-              <Server className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 font-medium">API Server</span>
-            </Flex>
-          </motion.div>
-
-          {/* Date and Time */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.7 }}
-            className="text-gray-300 text-center md:text-left"
-          >
-            <Flex align="center" gap={2} animate={false}>
-              <Clock className="w-4 h-4 text-gray-400" />
-              <div className="flex flex-col md:flex-row md:gap-2">
-                <span className="font-medium">{formatDate(currentTime)}</span>
-                <span className="text-accent-blue font-mono">
-                  {formatTime(currentTime)}
-                </span>
-              </div>
-            </Flex>
-          </motion.div>
-        </Flex>
+          HydroSense – Industrial IoT Water Monitoring
+        </p>
       </div>
-    </motion.nav>
+
+      {/* Right: inline status indicators + clock */}
+      <div className="flex items-center gap-5 flex-shrink-0 flex-wrap justify-end">
+
+        {/* System Online */}
+        <StatusIndicator
+          status={systemStatus}
+          label={systemStatus === 'online' ? 'System Online' : 'System Offline'}
+          size="sm"
+          animate={false}
+        />
+
+        {/* Connected / Disconnected */}
+        <div className="flex items-center gap-1.5">
+          {deviceConnected
+            ? <Wifi className="w-3.5 h-3.5 text-hs-teal" />
+            : <WifiOff className="w-3.5 h-3.5 text-hs-red" />
+          }
+          <span
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
+          >
+            {deviceConnected ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
+
+        {/* Live */}
+        <div className="flex items-center gap-1.5">
+          <Activity className="w-3.5 h-3.5 text-hs-teal" />
+          <span
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
+          >
+            Live
+          </span>
+        </div>
+
+        {/* API Server */}
+        <div className="flex items-center gap-1.5">
+          <Server className="w-3.5 h-3.5 text-hs-muted" />
+          <span
+            className="text-xs text-hs-muted"
+            style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
+          >
+            API Server
+          </span>
+        </div>
+
+        {/* Date + Time in JetBrains Mono */}
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-hs-muted" />
+          <span
+            className="text-xs text-hs-ink tabular-nums"
+            style={{ fontFamily: 'JetBrains Mono, monospace' }}
+          >
+            {formatDate(currentTime)}&nbsp;&nbsp;{formatTime(currentTime)}
+          </span>
+        </div>
+      </div>
+    </header>
   )
 }
 

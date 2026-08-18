@@ -1,78 +1,63 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const StatusIndicator = ({ 
+const StatusIndicator = ({
   status = 'online',
   label,
   size = 'md',
   className = '',
   animate = true,
   showLabel = true,
-  ...props 
+  ...props
 }) => {
   const statuses = {
-    online: {
-      color: 'bg-green-400',
-      glow: 'shadow-green-400/60',
-      text: 'Online'
-    },
-    offline: {
-      color: 'bg-red-400',
-      glow: 'shadow-red-400/60',
-      text: 'Offline'
-    },
-    warning: {
-      color: 'bg-yellow-400',
-      glow: 'shadow-yellow-400/60',
-      text: 'Warning'
-    },
-    critical: {
-      color: 'bg-red-500',
-      glow: 'shadow-red-500/60',
-      text: 'Critical'
-    },
-    normal: {
-      color: 'bg-green-500',
-      glow: 'shadow-green-500/60',
-      text: 'Normal'
-    }
+    online:   { color: '#2E9E6C', text: 'Online' },
+    offline:  { color: '#D14343', text: 'Offline' },
+    warning:  { color: '#C97A1F', text: 'Warning' },
+    critical: { color: '#D14343', text: 'Critical' },
+    normal:   { color: '#2E9E6C', text: 'Normal' },
   }
 
   const sizes = {
-    sm: 'w-2 h-2',
-    md: 'w-3 h-3',
-    lg: 'w-4 h-4'
+    sm: 6,
+    md: 8,
+    lg: 10,
   }
 
-  const { color, glow, text } = statuses[status]
-  const displayLabel = label || text
-
-  const indicatorClass = `
-    ${sizes[size]} 
-    ${color}
-    rounded-full animate-pulse
-  `.trim()
+  const cfg = statuses[status] || statuses.normal
+  const displayLabel = label || cfg.text
+  const dotPx = sizes[size] ?? 8
 
   const content = (
-    <div className={`flex items-center gap-2 ${className}`} {...props}>
-      <div className={indicatorClass}></div>
+    <div className={`flex items-center gap-1.5 ${className}`} {...props}>
+      {/* Colored dot — only the dot gets the status color */}
+      <span
+        className="rounded-full flex-shrink-0 animate-pulse"
+        style={{
+          width: dotPx,
+          height: dotPx,
+          backgroundColor: cfg.color,
+          display: 'inline-block',
+        }}
+      />
       {showLabel && (
-        <span className="text-sm font-medium text-gray-300">
+        <span
+          className="text-sm text-hs-muted"
+          style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}
+        >
           {displayLabel}
         </span>
       )}
     </div>
   )
 
-  if (!animate) {
-    return content
-  }
+  if (!animate) return content
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
       {content}
     </motion.div>

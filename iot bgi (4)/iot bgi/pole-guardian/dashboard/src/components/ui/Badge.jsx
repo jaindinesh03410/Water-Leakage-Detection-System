@@ -1,39 +1,43 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const Badge = ({ 
-  children, 
+const Badge = ({
+  children,
   variant = 'default',
   size = 'md',
   className = '',
   animate = true,
-  ...props 
+  ...props
 }) => {
   const variants = {
-    default: 'bg-glass-light text-white border border-white/20',
-    success: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    error: 'bg-red-500/20 text-red-400 border border-red-500/30',
-    warning: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
-    info: 'bg-accent-blue/20 text-accent-blue border border-accent-blue/30',
-    neon: 'bg-transparent text-accent-blue border border-accent-blue'
+    default: 'bg-hs-bg text-hs-muted border border-hs-border',
+    success: 'bg-[#E8F5EE] text-[#2E9E6C] border border-[#2E9E6C]/30',
+    error:   'bg-[#FDEAEA] text-[#D14343] border border-[#D14343]/30',
+    warning: 'bg-[#FEF4E6] text-[#C97A1F] border border-[#C97A1F]/30',
+    info:    'bg-[#EEF6F6] text-[#0F5C5B] border border-[#0F5C5B]/30',
+    neon:    'bg-transparent text-[#0F5C5B] border border-[#0F5C5B]',  // legacy alias
   }
 
   const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-    lg: 'px-4 py-2 text-base'
+    sm: 'px-2 py-0.5 text-xs',
+    md: 'px-2.5 py-1 text-xs',
+    lg: 'px-3 py-1.5 text-sm',
   }
 
   const badgeClass = `
-    ${variants[variant]} 
-    ${sizes[size]} 
+    ${variants[variant] ?? variants.default}
+    ${sizes[size] ?? sizes.md}
     ${className}
-    inline-flex items-center rounded-full font-medium
+    inline-flex items-center rounded font-medium
   `.trim()
 
   if (!animate) {
     return (
-      <span className={badgeClass} {...props}>
+      <span
+        className={badgeClass}
+        style={{ fontFamily: 'Inter, sans-serif' }}
+        {...props}
+      >
         {children}
       </span>
     )
@@ -41,10 +45,11 @@ const Badge = ({
 
   return (
     <motion.span
-      initial={{ opacity: 0, scale: 0.8 }}
+      initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.25 }}
       className={badgeClass}
+      style={{ fontFamily: 'Inter, sans-serif' }}
       {...props}
     >
       {children}

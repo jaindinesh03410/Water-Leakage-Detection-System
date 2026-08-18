@@ -2,54 +2,82 @@ import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react'
 
-const Alert = ({ 
-  type = 'info', 
-  title, 
-  message, 
-  show = true, 
+const Alert = ({
+  type = 'info',
+  title,
+  message,
+  show = true,
   onClose,
   className = '',
-  animate = true 
+  animate = true
 }) => {
   const types = {
     success: {
       icon: CheckCircle,
-      colors: 'border-green-500/50 bg-green-500/10 text-green-400',
-      iconColor: 'text-green-400'
+      bg:   'bg-[#F0FAF5]',
+      border: 'border-[#2E9E6C]',
+      title: 'text-[#1A6645]',
+      body:  'text-[#2E9E6C]',
+      iconColor: 'text-[#2E9E6C]',
     },
+
     error: {
       icon: XCircle,
-      colors: 'border-red-500/50 bg-red-500/10 text-red-400',
-      iconColor: 'text-red-400'
+      bg:   'bg-[#FEF2F2]',
+      border: 'border-[#D14343]',
+      title: 'text-[#991B1B]',
+      body:  'text-[#D14343]',
+      iconColor: 'text-[#D14343]',
     },
     warning: {
       icon: AlertTriangle,
-      colors: 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400',
-      iconColor: 'text-yellow-400'
+      bg:   'bg-[#FEF4E6]',
+      border: 'border-[#C97A1F]',
+      title: 'text-[#7A4A0A]',
+      body:  'text-[#C97A1F]',
+      iconColor: 'text-[#C97A1F]',
     },
     info: {
       icon: Info,
-      colors: 'border-accent-blue/50 bg-accent-blue/10 text-accent-blue',
-      iconColor: 'text-accent-blue'
+      bg:   'bg-[#EEF6F6]',
+      border: 'border-[#3E8E8C]',
+      title: 'text-[#0F5C5B]',
+      body:  'text-[#3E8E8C]',
+      iconColor: 'text-[#0F5C5B]',
     }
   }
 
-  const { icon: Icon, colors, iconColor } = types[type]
+  const cfg = types[type] || types.info
+  const Icon = cfg.icon
 
   const alertContent = (
-    <div className={`
-      glass-card border ${colors} ${className}
-      flex items-start gap-3 p-4 rounded-xl
-    `}>
-      <Icon className={`w-5 h-5 mt-0.5 ${iconColor} flex-shrink-0`} />
-      <div className="flex-1">
-        {title && <h4 className="font-semibold mb-1">{title}</h4>}
-        {message && <p className="text-sm opacity-90">{message}</p>}
+    <div
+      className={`
+        ${cfg.bg} border-l-4 ${cfg.border}
+        flex items-start gap-3 px-4 py-3 rounded-md
+        ${className}
+      `}
+    >
+      <Icon className={`w-4 h-4 mt-0.5 ${cfg.iconColor} flex-shrink-0`} />
+      <div className="flex-1 min-w-0">
+        {title && (
+          <p className={`text-sm font-semibold ${cfg.title}`}
+             style={{ fontFamily: 'Inter, sans-serif' }}>
+            {title}
+          </p>
+        )}
+        {message && (
+          <p className={`text-sm ${cfg.body} mt-0.5 opacity-90`}
+             style={{ fontFamily: 'Inter, sans-serif' }}>
+            {message}
+          </p>
+        )}
       </div>
       {onClose && (
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-hs-muted hover:text-hs-ink transition-colors flex-shrink-0"
+          aria-label="Dismiss"
         >
           <X className="w-4 h-4" />
         </button>
@@ -65,10 +93,10 @@ const Alert = ({
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
         >
           {alertContent}
         </motion.div>

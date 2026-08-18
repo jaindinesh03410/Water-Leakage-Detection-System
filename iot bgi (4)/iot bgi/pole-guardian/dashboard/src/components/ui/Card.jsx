@@ -1,22 +1,28 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const Card = ({ 
-  children, 
-  className = '', 
+const Card = ({
+  children,
+  className = '',
   variant = 'default',
+  emphasized = false,
   animate = true,
-  ...props 
+  ...props
 }) => {
+  const base = 'bg-white border rounded-lg p-6'
   const variants = {
-    default: 'glass-card p-6',
-    compact: 'glass-card p-4',
-    large: 'glass-card p-8',
-    neon: 'glass-card p-6 subtle-glow',
-    gradient: 'gradient-border'
+    default:   `${base} border-hs-border shadow-card`,
+    compact:   `bg-white border border-hs-border rounded-lg p-4 shadow-card`,
+    large:     `${base} border-hs-border shadow-card p-8`,
+    neon:      `${base} border-hs-border shadow-card`,       // legacy alias
+    gradient:  `bg-white border border-hs-border rounded-lg shadow-card`, // legacy alias
   }
 
-  const cardClass = `${variants[variant]} ${className}`
+  const emphasizedClass = emphasized
+    ? 'border-hs-teal border-[1.5px]'
+    : ''
+
+  const cardClass = `${variants[variant] ?? variants.default} ${emphasizedClass} ${className}`
 
   if (!animate) {
     return (
@@ -28,10 +34,9 @@ const Card = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.35 }}
       className={cardClass}
       {...props}
     >

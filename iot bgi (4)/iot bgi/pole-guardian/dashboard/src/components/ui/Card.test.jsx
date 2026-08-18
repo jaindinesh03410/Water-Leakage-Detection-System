@@ -11,25 +11,25 @@ describe('Card Component', () => {
   it('applies default variant classes', () => {
     const { container } = render(<Card>Content</Card>)
     const card = container.firstChild
-    expect(card).toHaveClass('glass-card', 'p-6')
+    expect(card).toHaveClass('bg-white', 'border', 'rounded-lg', 'p-6', 'border-hs-border', 'shadow-card')
   })
 
   it('applies compact variant classes', () => {
     const { container } = render(<Card variant="compact">Content</Card>)
     const card = container.firstChild
-    expect(card).toHaveClass('glass-card', 'p-4')
+    expect(card).toHaveClass('bg-white', 'border', 'border-hs-border', 'rounded-lg', 'p-4', 'shadow-card')
   })
 
   it('applies neon variant classes', () => {
     const { container } = render(<Card variant="neon">Content</Card>)
     const card = container.firstChild
-    expect(card).toHaveClass('glass-card', 'p-6', 'subtle-glow')
+    expect(card).toHaveClass('bg-white', 'border', 'rounded-lg', 'p-6', 'border-hs-border', 'shadow-card')
   })
 
   it('handles gradient variant with nested div', () => {
     const { container } = render(<Card variant="gradient">Content</Card>)
     const card = container.firstChild
-    expect(card).toHaveClass('gradient-border')
+    expect(card).toHaveClass('bg-white', 'border', 'border-hs-border', 'rounded-lg', 'shadow-card')
     expect(card.firstChild).toHaveClass('p-6')
   })
 

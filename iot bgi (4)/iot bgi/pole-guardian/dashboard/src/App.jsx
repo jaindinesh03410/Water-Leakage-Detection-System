@@ -3,318 +3,589 @@ import { Card, Button, Alert, Badge, StatusIndicator, MetricCard } from './compo
 import { Grid, Container, Section, Flex, TopNavigation } from './components/layout'
 import { FlowChart, PressureChart, UsageChart } from './components/charts'
 import { AIInsightsPanel } from './components/ai'
-import  AlertManager  from './components/alerts'
+import AlertManager from './components/alerts'
+import ReportsPage from './components/reports/ReportsPage.jsx'
+import SettingsPage from './components/settings/SettingsPage.jsx'
 import { WaterQualityPanel } from './components/quality'
-import { Droplets, Activity, Gauge, Shield, Zap, TrendingUp, AlertTriangle, BarChart3, Brain, Beaker } from 'lucide-react'
+import {
+  Droplets, Activity, Gauge, Shield, Zap, TrendingUp,
+  AlertTriangle, BarChart3, Brain, Beaker,
+  LayoutDashboard, Bell, GitBranch, FileText, Settings, Server
+} from 'lucide-react'
 import { useFirebase } from './contexts/FirebaseContext.jsx'
 import { useRealTimeMetrics, useActiveAlerts, useConnectionStatus, useLatestReadings } from './hooks/useFirebaseData.js'
 
+// ── Sidebar nav items ─────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { id: 'overview',   label: 'Overview',      icon: LayoutDashboard },
+  { id: 'analytics',  label: 'Analytics',     icon: BarChart3 },
+  { id: 'alerts',     label: 'Alerts',        icon: Bell },
+  { id: 'nodes',      label: 'Nodes',         icon: GitBranch },
+  { id: 'ai',         label: 'AI Insights',   icon: Brain },
+  { id: 'quality',    label: 'Water Quality', icon: Beaker },
+  { id: 'reports',    label: 'Reports',       icon: FileText },
+  { id: 'settings',   label: 'Settings',      icon: Settings },
+]
+
+// ── Node status color mapping ─────────────────────────────────────────────────
+const NODE_STATUS_COLORS = {
+  normal:   { dot: '#2E9E6C', label: 'text-[#2E9E6C]', text: 'Normal' },
+  warning:  { dot: '#C97A1F', label: 'text-[#C97A1F]', text: 'Warning' },
+  critical: { dot: '#D14343', label: 'text-[#D14343]', text: 'Critical' },
+  offline:  { dot: '#5B6E6D', label: 'text-[#5B6E6D]', text: 'Offline' },
+}
+
+function getNodeStatus(index, metrics) {
+  if (index < metrics.nodeStatus.normal) return 'normal'
+  if (index < metrics.nodeStatus.normal + metrics.nodeStatus.warning) return 'warning'
+  return 'critical'
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ activeTab, onTabChange, systemOnline }) {
+  return (
+    <aside className="hs-sidebar flex flex-col">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/10">
+        <div className="flex items-center gap-2.5 mb-0.5">
+          <Droplets className="w-5 h-5 text-white" />
+          <span
+            className="text-white font-bold text-sm tracking-wide uppercase"
+            style={{ fontFamily: 'Space Grotesk, Inter, sans-serif', letterSpacing: '0.08em' }}
+          >
+            HydroSense
+          </span>
+        </div>
+        <p className="text-white/50 text-xs ml-7" style={{ fontFamily: 'Inter, sans-serif' }}>
+          Smart Water Intelligence
+        </p>
+      </div>
+
+      {/* Nav links */}
+      <nav className="flex-1 py-3">
+        {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => onTabChange(id)}
+            className={`hs-sidebar-link w-full text-left ${activeTab === id ? 'active' : ''}`}
+          >
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Bottom status */}
+      <div className="px-5 py-4 border-t border-white/10">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full inline-block"
+            style={{ backgroundColor: systemOnline ? '#2E9E6C' : '#D14343' }}
+          />
+          <span className="text-white/60 text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {systemOnline ? 'System Online' : 'System Offline'}
+          </span>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const [showAlert, setShowAlert] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+
+  // ── Data hooks — untouched ────────────────────────────────────────────────
   const { loading: firebaseLoading, error: firebaseError } = useFirebase()
   const { metrics, loading: metricsLoading, error: metricsError } = useRealTimeMetrics()
   const { alerts } = useActiveAlerts()
   const { connected } = useConnectionStatus()
   const { readings } = useLatestReadings()
 
-  // Show loading state while Firebase initializes
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (firebaseLoading || metricsLoading) {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
-        <Card variant="neon" className="text-center p-8">
-          <div className="animate-spin w-8 h-8 border border-accent-blue border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-accent-blue mb-2">Initializing Smart Water Intelligence System</h2>
-          <p className="text-gray-400">Connecting to API server and ESP32 sensors...</p>
-        </Card>
+      <div className="min-h-screen bg-hs-bg flex items-center justify-center">
+        <div className="hs-card p-8 text-center max-w-sm">
+          <div
+            className="w-7 h-7 border-2 border-hs-teal border-t-transparent rounded-full mx-auto mb-4"
+            style={{ animation: 'spin 0.8s linear infinite' }}
+          />
+          <h2
+            className="text-base font-semibold text-hs-ink mb-1"
+            style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+          >
+            Initializing HydroSense
+          </h2>
+          <p className="text-sm text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Connecting to API server and ESP32 sensors…
+          </p>
+        </div>
       </div>
     )
   }
 
-  // Show error state if Firebase fails to initialize
+  // ── Error state (kept from original, same condition) ──────────────────────
   if (false) {//(firebaseError || metricsError) {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
-        <Card variant="neon" className="text-center p-8 border-red-500/20">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-red-400 mb-2">System Connection Error</h2>
-          <p className="text-gray-400 mb-4">
+      <div className="min-h-screen bg-hs-bg flex items-center justify-center">
+        <div className="hs-card p-8 text-center max-w-sm border-l-4 border-hs-red">
+          <AlertTriangle className="w-8 h-8 text-hs-red mx-auto mb-3" />
+          <h2
+            className="text-base font-semibold text-hs-red mb-1"
+            style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+          >
+            System Connection Error
+          </h2>
+          <p className="text-sm text-hs-muted mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
             {firebaseError || metricsError || 'Failed to connect to API server'}
           </p>
           <Button variant="primary" onClick={() => window.location.reload()}>
             Retry Connection
           </Button>
-        </Card>
+        </div>
       </div>
     )
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: Activity },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'ai', label: 'AI Insights', icon: Brain },
-    { id: 'quality', label: 'Water Quality', icon: Beaker },
-    { id: 'alerts', label: 'Alerts', icon: AlertTriangle }
-  ]
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const systemOnline = true
 
   return (
-    <div className="min-h-screen bg-primary">
-      {/* Top Navigation */}
-      <TopNavigation 
-        systemStatus="online"
-        deviceConnected={true}
+    <div className="flex min-h-screen bg-hs-bg">
+
+      {/* ── Sidebar nav ───────────────────────────────────────────────────── */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        systemOnline={systemOnline}
       />
-      
-      <Container animate={true}>
-        {/* Connection Status Alert - hidden, data loads automatically */}
 
-        {/* Demo Alert */}
-        <Section spacing="none">
-          <Alert
-            type="success"
-            title="Smart Water Intelligence System Active"
-            message="Complete IoT monitoring system with real-time analytics, AI insights, and comprehensive water quality monitoring."
-            show={showAlert}
-            onClose={() => setShowAlert(false)}
-          />
-        </Section>
+      {/* ── Main panel ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 min-w-0">
 
-        {/* Tab Navigation */}
-        <Section spacing="tight">
-          <Card variant="compact" className="p-2">
-            <Flex gap={2} wrap={true} animate={false}>
-              {tabs.map((tab) => {
-                const IconComponent = tab.icon
-                return (
-                  <Button
-                    key={tab.id}
-                    variant={activeTab === tab.id ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setActiveTab(tab.id)}
-                    className="flex items-center gap-2"
-                  >
-                    <IconComponent className="w-4 h-4" />
-                    {tab.label}
-                  </Button>
-                )
-              })}
-            </Flex>
-          </Card>
-        </Section>
+        {/* Header bar */}
+        <TopNavigation
+          systemStatus="online"
+          deviceConnected={true}
+        />
 
-        {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <>
-            {/* Main Metrics Grid - 4 Column Responsive */}
-            <Section title="Real-time Metrics" subtitle="Live monitoring data from IoT sensors">
-              <Grid cols={4} gap={6}>
-                <MetricCard
-                  title="Flow Rate"
-                  value={metrics.flowRate?.toFixed(1) || '0.0'}
-                  unit="L/min"
-                  icon={Droplets}
-                  status={metrics.flowRate > 50 ? 'critical' : metrics.flowRate > 25 ? 'warning' : 'normal'}
-                  trend={metrics.flowRate > 20 ? 'up' : metrics.flowRate > 10 ? 'stable' : 'down'}
-                  trendValue={`${((metrics.flowRate || 0) * 0.1).toFixed(1)}%`}
-                  variant="neon"
+        {/* Scrollable content */}
+        <main className="flex-1 overflow-y-auto pb-24">
+          <div className="px-6 py-2">
+
+            {/* ── Dismissible system-active banner ────────────────────────── */}
+            <Section spacing="none" animate={false}>
+              <div className="py-3">
+                <Alert
+                  type="success"
+                  title="System Active"
+                  message="Complete IoT monitoring system with real-time analytics, AI insights, and comprehensive water quality monitoring."
+                  show={showAlert}
+                  onClose={() => setShowAlert(false)}
                 />
-                
-                <MetricCard
-                  title="Pressure"
-                  value={metrics.pressure?.toFixed(1) || '0.0'}
-                  unit="Bar"
-                  icon={Gauge}
-                  status={metrics.pressure > 3 ? 'critical' : metrics.pressure < 1 ? 'warning' : 'normal'}
-                  trend="stable"
-                  trendValue="0.0%"
-                  variant="default"
-                />
-                
-                <MetricCard
-                  title="Vibration Status"
-                  value={metrics.vibrationStatus === 'detected' ? 'ALERT' : 'NORMAL'}
-                  unit=""
-                  icon={Shield}
-                  status={metrics.vibrationStatus === 'detected' ? 'critical' : 'normal'}
-                  trend={metrics.vibrationStatus === 'detected' ? 'up' : 'stable'}
-                  trendValue={metrics.vibrationStatus === 'detected' ? 'TAMPER' : 'OK'}
-                  variant="gradient"
-                />
-                
-                <MetricCard
-                  title="System Health"
-                  value={connected ? '52.0' : '0.0'}
-                  unit="%"
-                  icon={Zap}
-                  status={connected ? 'normal' : 'critical'}
-                  trend={connected ? 'up' : 'down'}
-                  trendValue={connected ? '1.5%' : 'OFFLINE'}
-                  variant="compact"
-                />
-              </Grid>
+              </div>
             </Section>
 
-            {/* Secondary Metrics - 3 Column */}
-            <Section title="Analytics Overview" subtitle="AI-powered insights and predictions">
-              <Grid cols={3} gap={4}>
-                <Card variant="neon">
-                  <Flex direction="column" gap={4} animate={false}>
-                    <Flex align="center" gap={3} animate={false}>
-                      <TrendingUp className="w-6 h-6 text-accent-cyan" />
-                      <h3 className="text-lg font-semibold">Theft Risk</h3>
-                      <Badge 
-                        variant={metrics.theftRisk > 70 ? 'error' : metrics.theftRisk > 30 ? 'warning' : 'success'} 
-                        size="sm"
+            {/* ════════════════════════════════════════════════════════════════
+                OVERVIEW TAB
+            ════════════════════════════════════════════════════════════════ */}
+            {activeTab === 'overview' && (
+              <>
+                {/* Real-time Metrics — 4 cards, Vibration emphasized */}
+                <Section title="Real-time Metrics" subtitle="Live monitoring data from IoT sensors">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+                    {/* Flow Rate */}
+                    <MetricCard
+                      title="Flow Rate"
+                      value={metrics.flowRate?.toFixed(1) || '0.0'}
+                      unit="L/min"
+                      icon={Droplets}
+                      status={metrics.flowRate > 50 ? 'critical' : metrics.flowRate > 25 ? 'warning' : 'normal'}
+                      trend={metrics.flowRate > 20 ? 'up' : metrics.flowRate > 10 ? 'stable' : 'down'}
+                      trendValue={`${((metrics.flowRate || 0) * 0.1).toFixed(1)}%`}
+                      variant="default"
+                    />
+
+                    {/* Pressure */}
+                    <MetricCard
+                      title="Pressure"
+                      value={metrics.pressure?.toFixed(1) || '0.0'}
+                      unit="Bar"
+                      icon={Gauge}
+                      status={metrics.pressure > 3 ? 'critical' : metrics.pressure < 1 ? 'warning' : 'normal'}
+                      trend="stable"
+                      trendValue="0.0%"
+                      variant="default"
+                    />
+
+                    {/* Vibration Status — EMPHASIZED (teal border) */}
+                    <MetricCard
+                      title="Vibration Status"
+                      value={metrics.vibrationStatus === 'detected' ? 'ALERT' : 'NORMAL'}
+                      unit=""
+                      icon={Shield}
+                      status={metrics.vibrationStatus === 'detected' ? 'critical' : 'normal'}
+                      trend={metrics.vibrationStatus === 'detected' ? 'up' : 'stable'}
+                      trendValue={metrics.vibrationStatus === 'detected' ? 'TAMPER' : 'OK'}
+                      variant="default"
+                      emphasized={true}
+                    />
+
+                    {/* System Health */}
+                    <MetricCard
+                      title="System Health"
+                      value={connected ? '52.0' : '0.0'}
+                      unit="%"
+                      icon={Zap}
+                      status={connected ? 'normal' : 'critical'}
+                      trend={connected ? 'up' : 'down'}
+                      trendValue={connected ? '1.5%' : 'OFFLINE'}
+                      variant="default"
+                    />
+                  </div>
+                </Section>
+
+                {/* Analytics Overview — 3 cards, Alerts emphasized */}
+                <Section title="Analytics Overview" subtitle="AI-powered insights and predictions">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                    {/* Theft Risk */}
+                    <Card variant="default" animate={true}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-hs-teal" />
+                          <span
+                            className="text-sm font-medium text-hs-muted"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            Theft Risk
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs font-medium flex items-center gap-0.5 ${
+                            metrics.theftRisk > 30 ? 'text-hs-red' : 'text-hs-green'
+                          }`}
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
+                          ↑ 3.2%
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <span
+                          className="text-3xl font-semibold text-hs-ink"
+                          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                        >
+                          {metrics.theftRisk}
+                        </span>
+                        <span className="text-sm text-hs-muted ml-1">%</span>
+                      </div>
+                      {/* Risk level badge */}
+                      <span
+                        className="hs-status-pill"
+                        style={{
+                          backgroundColor: metrics.theftRisk > 70 ? '#FDEAEA' : metrics.theftRisk > 30 ? '#FEF4E6' : '#E8F5EE',
+                          color:           metrics.theftRisk > 70 ? '#D14343' : metrics.theftRisk > 30 ? '#C97A1F' : '#2E9E6C',
+                        }}
                       >
                         {metrics.theftRisk > 70 ? 'High' : metrics.theftRisk > 30 ? 'Medium' : 'Low'}
-                      </Badge>
-                    </Flex>
-                    <div className="text-2xl font-bold text-accent-cyan">{metrics.theftRisk}%</div>
-                    <div className="text-sm text-gray-400">Based on usage patterns</div>
-                  </Flex>
-                </Card>
-
-                <Card variant="default">
-                  <Flex direction="column" gap={4} animate={false}>
-                    <Flex align="center" gap={3} animate={false}>
-                      <Activity className="w-6 h-6 text-accent-blue" />
-                      <h3 className="text-lg font-semibold">Daily Usage</h3>
-                      <Badge variant="info" size="sm">
-                        {metrics.totalConsumption > 2000 ? 'High' : 'Normal'}
-                      </Badge>
-                    </Flex>
-                    <div className="text-2xl font-bold text-accent-blue">{metrics.totalConsumption.toLocaleString()} L</div>
-                    <div className="text-sm text-gray-400">Today's consumption</div>
-                  </Flex>
-                </Card>
-
-                <Card variant="gradient">
-                  <Flex direction="column" gap={4} animate={false}>
-                    <Flex align="center" gap={3} animate={false}>
-                      <div className="w-6 h-6 bg-accent-purple rounded-full"></div>
-                      <h3 className="text-lg font-semibold">Alerts</h3>
-                      <Badge 
-                        variant={metrics.alertCount > 5 ? 'error' : metrics.alertCount > 0 ? 'warning' : 'success'} 
-                        size="sm"
-                      >
-                        {metrics.alertCount} Active
-                      </Badge>
-                    </Flex>
-                    <div className="text-2xl font-bold text-accent-purple">{metrics.alertCount}</div>
-                    <div className="text-sm text-gray-400">Total today</div>
-                  </Flex>
-                </Card>
-              </Grid>
-            </Section>
-
-            {/* Node Status - 6 Column on Large Screens */}
-            <Section title="Node Status" subtitle="Pipeline monitoring points">
-              <Grid cols={6} gap={3}>
-                {['Node 1', 'Node 2', 'Node 3', 'Node 4', 'Node 5', 'Node 6'].map((node, index) => {
-                  const nodeStatus = index < metrics.nodeStatus.normal ? 'normal' : 
-                                   index < (metrics.nodeStatus.normal + metrics.nodeStatus.warning) ? 'warning' : 'critical'
-                  
-                  return (
-                    <Card key={node} variant="compact" className="text-center">
-                      <h4 className="text-sm font-semibold mb-2">{node}</h4>
-                      <StatusIndicator 
-                        status={nodeStatus} 
-                        showLabel={false}
-                        className="justify-center"
-                      />
-                      <div className="text-xs text-gray-400 mt-2 capitalize">
-                        {nodeStatus}
+                      </span>
+                      {/* Mini gauge */}
+                      <div className="mt-3 h-1.5 bg-hs-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(metrics.theftRisk, 100)}%`,
+                            backgroundColor: metrics.theftRisk > 70 ? '#D14343' : metrics.theftRisk > 30 ? '#C97A1F' : '#2E9E6C',
+                          }}
+                        />
                       </div>
                     </Card>
-                  )
-                })}
-              </Grid>
-            </Section>
-          </>
-        )}
 
-        {activeTab === 'analytics' && (
-          <>
-            <Section title="Data Visualization" subtitle="Real-time charts and analytics">
-              <Grid cols={1} gap={6}>
-                <FlowChart data={readings ? [readings] : []} />
-                <Grid cols={2} gap={6}>
-                  <PressureChart data={readings ? [readings] : []} />
-                  <UsageChart />
+                    {/* Daily Usage */}
+                    <Card variant="default" animate={true}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-hs-teal" />
+                          <span
+                            className="text-sm font-medium text-hs-muted"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            Daily Usage
+                          </span>
+                        </div>
+                        <span
+                          className="text-xs font-medium text-hs-red flex items-center gap-0.5"
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
+                          ↓ 4.1%
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <span
+                          className="text-3xl font-semibold text-hs-ink"
+                          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                        >
+                          {metrics.totalConsumption.toLocaleString()}
+                        </span>
+                        <span className="text-sm text-hs-muted ml-1">L</span>
+                      </div>
+                      <span className="hs-status-pill normal">
+                        {metrics.totalConsumption > 2000 ? 'High' : 'Normal'}
+                      </span>
+                      <p
+                        className="text-xs text-hs-muted mt-2"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        Today's consumption
+                      </p>
+                    </Card>
+
+                    {/* Alerts — EMPHASIZED */}
+                    <Card variant="default" emphasized={true} animate={true}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-hs-teal" />
+                          <span
+                            className="text-sm font-medium text-hs-muted"
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            Alerts
+                          </span>
+                        </div>
+                        <span
+                          className="text-xs font-medium text-hs-red"
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
+                          ↑ {metrics.alertCount}
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <span
+                          className="text-3xl font-semibold text-hs-ink"
+                          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                        >
+                          {metrics.alertCount}
+                        </span>
+                      </div>
+                      <span
+                        className={`hs-status-pill ${metrics.alertCount > 5 ? 'critical' : metrics.alertCount > 0 ? 'warning' : 'normal'}`}
+                      >
+                        {metrics.alertCount} Active
+                      </span>
+                      <p
+                        className="text-xs text-hs-muted mt-2"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        Total today
+                      </p>
+                    </Card>
+                  </div>
+                </Section>
+
+                {/* Node Status — 6 compact cards */}
+                <Section title="Node Status" subtitle="Pipeline monitoring points">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    {['NODE-01', 'NODE-02', 'NODE-03', 'NODE-04', 'NODE-05', 'NODE-06'].map((node, index) => {
+                      const ns = getNodeStatus(index, metrics)
+                      const nsCfg = NODE_STATUS_COLORS[ns] || NODE_STATUS_COLORS.normal
+                      return (
+                        <div key={node} className="hs-card p-3 text-center">
+                          <div
+                            className="text-xs font-medium text-hs-muted mb-2"
+                            style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                          >
+                            {node}
+                          </div>
+                          <span
+                            className="inline-block w-2 h-2 rounded-full mb-1.5"
+                            style={{ backgroundColor: nsCfg.dot }}
+                          />
+                          <div
+                            className={`text-xs font-semibold ${nsCfg.label}`}
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            {nsCfg.text}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Section>
+              </>
+            )}
+
+            {/* ANALYTICS TAB */}
+            {activeTab === 'analytics' && (
+              <Section title="Data Visualization" subtitle="Real-time charts and analytics">
+                <Grid cols={1} gap={6}>
+                  <FlowChart data={readings ? [readings] : []} />
+                  <Grid cols={2} gap={6}>
+                    <PressureChart data={readings ? [readings] : []} />
+                    <UsageChart />
+                  </Grid>
                 </Grid>
-              </Grid>
-            </Section>
-          </>
-        )}
+              </Section>
+            )}
 
-        {activeTab === 'ai' && (
-          <Section title="AI Intelligence Center" subtitle="Machine learning insights and predictions">
-            <AIInsightsPanel currentReading={readings} />
-          </Section>
-        )}
+            {/* AI INSIGHTS TAB */}
+            {activeTab === 'ai' && (
+              <Section title="AI Intelligence Center" subtitle="Machine learning insights and predictions">
+                <AIInsightsPanel currentReading={readings} />
+              </Section>
+            )}
 
-        {activeTab === 'quality' && (
-          <Section title="Water Quality Monitoring" subtitle="Comprehensive water quality analysis">
-            <WaterQualityPanel />
-          </Section>
-        )}
+            {/* WATER QUALITY TAB */}
+            {activeTab === 'quality' && (
+              <Section title="Water Quality Monitoring" subtitle="Comprehensive water quality analysis">
+                <WaterQualityPanel />
+              </Section>
+            )}
 
-        {activeTab === 'alerts' && (
-          <Section title="Alert Management" subtitle="System notifications and warnings">
-            <AlertManager 
-              alerts={alerts} 
-              onDismiss={(id) => console.log('Dismiss alert:', id)}
-              onMute={(muted) => console.log('Mute alerts:', muted)}
-            />
-          </Section>
-        )}
+            {/* ALERTS TAB */}
+            {activeTab === 'alerts' && (
+              <Section title="Alert Management" subtitle="System notifications and warnings">
+                <AlertManager
+                  alerts={alerts}
+                  onDismiss={(id) => console.log('Dismiss alert:', id)}
+                  onMute={(muted) => console.log('Mute alerts:', muted)}
+                />
+              </Section>
+            )}
 
-        {/* System Status Summary */}
-        <Section spacing="default">
-          <Card variant="large" className="text-center subtle-glow">
-            <h2 className="text-xl md:text-2xl font-semibold mb-4 text-accent-blue">
-              PoleGuardian Smart Water Intelligence System
-            </h2>
-            <p className="text-gray-300 mb-6 text-sm md:text-base">
-              Complete IoT monitoring solution with live ESP32 sensor data. 
-              AI analytics processing {metrics.totalConsumption.toLocaleString()}L daily consumption 
-              with {metrics.theftRisk}% theft risk assessment and comprehensive quality monitoring.
-            </p>
-            
-            <Flex justify="center" gap={4} wrap={true} responsive={true} className="mb-8">
-              <Button variant="primary" size="lg">
-                System Online
-              </Button>
-              <Button variant="secondary" size="lg" onClick={() => setActiveTab('analytics')}>
-                View Analytics
-              </Button>
-              <Button variant="neon" size="lg" onClick={() => setActiveTab('ai')}>
-                AI Insights
-              </Button>
-            </Flex>
-            
-            {/* Real-time Status Grid */}
-            <Grid cols={4} gap={4} className="text-sm">
-              <Card variant="compact" className="glass-card-dark text-center">
-                <div className="text-accent-blue font-semibold">Connected</div>
-                <div className="text-gray-400">Backend Status</div>
-              </Card>
-              <Card variant="compact" className="glass-card-dark text-center">
-                <div className="text-accent-cyan font-semibold">{metrics.flowRate.toFixed(1)} L/min</div>
-                <div className="text-gray-400">Current Flow</div>
-              </Card>
-              <Card variant="compact" className="glass-card-dark text-center">
-                <div className="text-accent-purple font-semibold">{metrics.theftRisk}%</div>
-                <div className="text-gray-400">Theft Risk</div>
-              </Card>
-              <Card variant="compact" className="glass-card-dark text-center">
-                <div className="text-green-400 font-semibold">{metrics.alertCount}</div>
-                <div className="text-gray-400">Active Alerts</div>
-              </Card>
-            </Grid>
-          </Card>
-        </Section>
-      </Container>
+            {/* REPORTS TAB */}
+            {activeTab === 'reports' && (
+              <ReportsPage />
+            )}
+
+            {/* NODES TAB */}
+            {activeTab === 'nodes' && (
+              <Section title="Nodes & Zones Status" subtitle="Pipeline monitoring points and health status">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {['NODE-01', 'NODE-02', 'NODE-03', 'NODE-04', 'NODE-05', 'NODE-06'].map((node, index) => {
+                    const ns = getNodeStatus(index, metrics)
+                    const nsCfg = NODE_STATUS_COLORS[ns] || NODE_STATUS_COLORS.normal
+                    return (
+                      <div key={node} className="hs-card p-4 text-center">
+                        <div
+                          className="text-xs font-semibold text-hs-muted mb-2"
+                          style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                        >
+                          {node}
+                        </div>
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full mb-2 animate-pulse"
+                          style={{ backgroundColor: nsCfg.dot }}
+                        />
+                        <div
+                          className={`text-xs font-bold uppercase tracking-wider ${nsCfg.label}`}
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
+                          {nsCfg.text}
+                        </div>
+                        <div className="text-[10px] text-hs-muted mt-2">
+                          Zone {index < 2 ? 'A' : index < 4 ? 'B' : 'C'}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Section>
+            )}
+
+            {/* SETTINGS TAB */}
+            {activeTab === 'settings' && (
+              <SettingsPage />
+            )}
+
+          </div>
+        </main>
+
+        {/* ── Persistent bottom strip ───────────────────────────────────── */}
+        <footer className="fixed bottom-0 left-60 right-0 bg-white border-t border-hs-border px-6 py-3 flex items-center gap-4 z-10">
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button variant="primary" size="sm">
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-white inline-block"
+              />
+              System Online
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setActiveTab('analytics')}>
+              View Analytics
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setActiveTab('ai')}>
+              AI Insights
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="h-8 w-px bg-hs-border flex-shrink-0 mx-2" />
+
+          {/* Stat cells */}
+          <div className="flex items-center gap-0 flex-1 overflow-x-auto">
+            {/* Backend Status */}
+            <div className="flex flex-col items-start px-4 border-r border-hs-border">
+              <span className="text-[10px] text-hs-muted uppercase tracking-wide"
+                    style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
+                Backend Status
+              </span>
+              <span className="text-xs font-semibold text-hs-green"
+                    style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                Online
+              </span>
+            </div>
+            {/* Current Flow */}
+            <div className="flex flex-col items-start px-4 border-r border-hs-border">
+              <span className="text-[10px] text-hs-muted uppercase tracking-wide"
+                    style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
+                Current Flow
+              </span>
+              <span className="text-xs font-semibold text-hs-ink"
+                    style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                {metrics.flowRate.toFixed(1)} L/min
+              </span>
+            </div>
+            {/* Theft Risk */}
+            <div className="flex flex-col items-start px-4 border-r border-hs-border">
+              <span className="text-[10px] text-hs-muted uppercase tracking-wide"
+                    style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
+                Theft Risk
+              </span>
+              <div className="flex items-center gap-1">
+                <span
+                  className="w-1.5 h-1.5 rounded-full inline-block"
+                  style={{ backgroundColor: metrics.theftRisk > 30 ? '#C97A1F' : '#2E9E6C' }}
+                />
+                <span className="text-xs font-semibold text-hs-ink"
+                      style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                  {metrics.theftRisk}%
+                </span>
+              </div>
+            </div>
+            {/* Active Alerts */}
+            <div className="flex flex-col items-start px-4">
+              <span className="text-[10px] text-hs-muted uppercase tracking-wide"
+                    style={{ fontFamily: 'Inter, sans-serif', letterSpacing: '0.06em' }}>
+                Active Alerts
+              </span>
+              <div className="flex items-center gap-1">
+                <span
+                  className="w-1.5 h-1.5 rounded-full inline-block"
+                  style={{ backgroundColor: metrics.alertCount > 0 ? '#D14343' : '#2E9E6C' }}
+                />
+                <span className="text-xs font-semibold text-hs-ink"
+                      style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                  {metrics.alertCount}
+                </span>
+              </div>
+            </div>
+          </div>
+        </footer>
+
+      </div>
     </div>
   )
 }

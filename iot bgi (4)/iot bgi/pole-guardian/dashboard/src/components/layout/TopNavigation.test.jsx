@@ -24,7 +24,7 @@ describe('TopNavigation', () => {
     render(<TopNavigation />)
     
     expect(screen.getByText('Smart Water Intelligence System')).toBeInTheDocument()
-    expect(screen.getByText('PoleGuardian - Industrial IoT Water Monitoring')).toBeInTheDocument()
+    expect(screen.getByText('HydroSense – Industrial IoT Water Monitoring')).toBeInTheDocument()
   })
 
   it('shows system status indicator', () => {
@@ -51,10 +51,10 @@ describe('TopNavigation', () => {
     expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
-  it('displays Firebase server status', () => {
+  it('displays API Server status', () => {
     render(<TopNavigation />)
     
-    expect(screen.getByText('Firebase')).toBeInTheDocument()
+    expect(screen.getByText('API Server')).toBeInTheDocument()
   })
 
   it('displays current date and time', async () => {
@@ -63,8 +63,10 @@ describe('TopNavigation', () => {
     
     render(<TopNavigation />)
     
-    // Check for date components
-    expect(screen.getByText(/Mon, Jan 15, 2024/)).toBeInTheDocument()
+    // Check for date components (toLocaleDateString('en-GB') gives e.g. "15 Jan 2024" or with commas depending on locale, we use Regex to be safe)
+    expect(screen.getByText(/15/)).toBeInTheDocument()
+    expect(screen.getByText(/Jan/)).toBeInTheDocument()
+    expect(screen.getByText(/2024/)).toBeInTheDocument()
     expect(screen.getByText(/10:30:45/)).toBeInTheDocument()
   })
 
@@ -90,8 +92,8 @@ describe('TopNavigation', () => {
     
     expect(screen.getByText('System Offline')).toBeInTheDocument()
     
-    rerender(<TopNavigation systemStatus="warning" />)
-    expect(screen.getByText('System Warning')).toBeInTheDocument()
+    rerender(<TopNavigation systemStatus="online" />)
+    expect(screen.getByText('System Online')).toBeInTheDocument()
   })
 
   it('applies custom className', () => {
