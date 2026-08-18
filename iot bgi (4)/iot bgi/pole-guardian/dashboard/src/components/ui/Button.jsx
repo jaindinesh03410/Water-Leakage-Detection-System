@@ -1,44 +1,46 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const Button = ({ 
-  children, 
-  variant = 'primary', 
+const Button = ({
+  children,
+  variant = 'primary',
   size = 'md',
   className = '',
   disabled = false,
   onClick,
-  ...props 
+  ...props
 }) => {
   const variants = {
-    primary: 'bg-accent-blue hover:bg-accent-blue/80 text-white',
-    secondary: 'bg-glass-light hover:bg-glass-light/80 text-white border border-white/10',
-    ghost: 'hover:bg-glass-light text-accent-blue',
-    neon: 'bg-transparent border border-accent-blue text-accent-blue hover:bg-accent-blue hover:text-primary'
+    primary:   'bg-hs-teal hover:bg-hs-teal-light text-white border border-hs-teal',
+    secondary: 'bg-white hover:bg-hs-bg text-hs-teal border border-hs-teal',
+    ghost:     'hover:bg-hs-bg text-hs-teal border border-transparent',
+    neon:      'bg-white hover:bg-hs-bg text-hs-teal border border-hs-teal',   // legacy alias
   }
 
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg'
+    md: 'px-4 py-2 text-sm',
+    lg: 'px-5 py-2.5 text-sm',
   }
 
   const buttonClass = `
-    ${variants[variant]} 
-    ${sizes[size]} 
+    ${variants[variant] ?? variants.primary}
+    ${sizes[size] ?? sizes.md}
     ${className}
-    rounded-lg font-medium transition-all duration-200
-    disabled:opacity-50 disabled:cursor-not-allowed
-    focus:outline-none focus:ring-2 focus:ring-accent-blue/50
+    rounded-md font-medium transition-all duration-150
+    disabled:opacity-40 disabled:cursor-not-allowed
+    focus:outline-none focus:ring-2 focus:ring-hs-teal/40
+    inline-flex items-center gap-2
   `.trim()
 
   return (
     <motion.button
-      whileHover={!disabled ? { scale: 1.05 } : {}}
-      whileTap={!disabled ? { scale: 0.95 } : {}}
+      whileHover={!disabled ? { scale: 1.02 } : {}}
+      whileTap={!disabled ? { scale: 0.98 } : {}}
       className={buttonClass}
       disabled={disabled}
       onClick={onClick}
+      style={{ fontFamily: 'Inter, sans-serif' }}
       {...props}
     >
       {children}

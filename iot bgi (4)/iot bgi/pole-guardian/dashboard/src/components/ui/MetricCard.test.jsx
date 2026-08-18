@@ -42,7 +42,7 @@ describe('MetricCard Component', () => {
       />
     )
     
-    expect(screen.getByText('↗ 2.1%')).toBeInTheDocument()
+    expect(screen.getByText('↑ 2.1%')).toBeInTheDocument()
   })
 
   it('applies correct status colors', () => {
@@ -55,7 +55,7 @@ describe('MetricCard Component', () => {
     )
     
     const valueElement = screen.getByText('24.5')
-    expect(valueElement).toHaveClass('text-yellow-400')
+    expect(valueElement).toHaveClass('text-hs-amber')
   })
 
   it('shows correct status text', () => {
@@ -79,7 +79,8 @@ describe('MetricCard Component', () => {
       />
     )
     
-    // Should not have motion wrapper
-    expect(container.firstChild).toHaveClass('glass-card')
+    // Should render the child element directly. In modern MetricCard, it renders the Card component inside.
+    // The outermost element when animate=false is the Card root div, which has the card style classes.
+    expect(container.firstChild).toHaveClass('bg-white')
   })
 })

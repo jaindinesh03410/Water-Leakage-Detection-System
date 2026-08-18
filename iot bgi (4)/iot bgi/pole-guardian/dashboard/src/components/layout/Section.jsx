@@ -1,35 +1,41 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 
-const Section = ({ 
-  children, 
+const Section = ({
+  children,
   title,
   subtitle,
   spacing = 'default',
   className = '',
   animate = true,
-  ...props 
+  ...props
 }) => {
   const spacings = {
-    tight: 'py-4',
-    default: 'py-8',
-    loose: 'py-12',
-    none: ''
+    tight:   'py-4',
+    default: 'py-6',
+    loose:   'py-10',
+    none:    '',
   }
 
-  const sectionClass = `${spacings[spacing]} ${className}`
+  const sectionClass = `${spacings[spacing] ?? spacings.default} ${className}`
 
   const content = (
     <section className={sectionClass} {...props}>
       {(title || subtitle) && (
-        <div className="mb-8">
+        <div className="mb-4">
           {title && (
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 neon-text">
+            <h2
+              className="text-base font-semibold text-hs-ink mb-0.5"
+              style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+            >
               {title}
             </h2>
           )}
           {subtitle && (
-            <p className="text-gray-300 text-lg">
+            <p
+              className="text-xs text-hs-muted"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
               {subtitle}
             </p>
           )}
@@ -39,15 +45,13 @@ const Section = ({
     </section>
   )
 
-  if (!animate) {
-    return content
-  }
+  if (!animate) return content
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.4 }}
     >
       {content}
     </motion.div>

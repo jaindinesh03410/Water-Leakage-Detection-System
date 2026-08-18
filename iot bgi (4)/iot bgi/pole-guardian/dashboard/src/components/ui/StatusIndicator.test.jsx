@@ -18,8 +18,9 @@ describe('StatusIndicator Component', () => {
   it('applies correct status colors', () => {
     const { container } = render(<StatusIndicator status="critical" />)
     
-    const indicator = container.querySelector('.bg-red-500')
+    const indicator = container.querySelector('span.rounded-full')
     expect(indicator).toBeInTheDocument()
+    expect(indicator.style.backgroundColor).toBe('rgb(209, 67, 67)') // #D14343
   })
 
   it('hides label when showLabel is false', () => {
@@ -31,8 +32,9 @@ describe('StatusIndicator Component', () => {
   it('applies correct size classes', () => {
     const { container } = render(<StatusIndicator size="lg" />)
     
-    const indicator = container.querySelector('.w-4.h-4')
+    const indicator = container.querySelector('span.rounded-full')
     expect(indicator).toBeInTheDocument()
+    expect(indicator.style.width).toBe('10px')
   })
 
   it('renders without animation when animate is false', () => {
