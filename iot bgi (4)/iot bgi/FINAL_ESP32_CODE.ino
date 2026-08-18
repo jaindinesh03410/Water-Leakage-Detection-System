@@ -30,8 +30,8 @@ HARDWARE CONNECTIONS:
 // =============================================================
 // ⚙️  CREDENTIALS - यहाँ अपनी values डालें
 // =============================================================
-#define WIFI_SSID       "YOUR_WIFI_NAME"       // ← आपका WiFi नाम
-#define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"   // ← आपका WiFi password
+#define WIFI_SSID       "ACERASPIRLITE0130"       // ← आपका WiFi नाम
+#define WIFI_PASSWORD   "h/433T98"   // ← आपका WiFi password
 #define API_KEY         "AIzaSyApd72oTFdydyVaWEGBfhYT3UTCzbJ_LIU"
 #define DATABASE_URL    "https://iot-bgi-default-rtdb.asia-southeast1.firebasedatabase.app/"
 
