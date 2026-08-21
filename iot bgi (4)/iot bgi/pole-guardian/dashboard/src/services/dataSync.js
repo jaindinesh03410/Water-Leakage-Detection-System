@@ -174,7 +174,7 @@ class DataSyncService {
     if (!alerts) return []
 
     return Object.entries(alerts)
-      .filter(([_, alert]) => !alert.resolved)
+      .filter(([, alert]) => !alert.resolved)
       .map(([id, alert]) => ({ id, ...alert }))
       .sort((a, b) => b.timestamp - a.timestamp)
   }
@@ -185,7 +185,7 @@ class DataSyncService {
 
     const summary = { normal: 0, warning: 0, critical: 0 }
     Object.values(nodes).forEach(node => {
-      if (summary.hasOwnProperty(node.status)) summary[node.status]++
+      if (Object.prototype.hasOwnProperty.call(summary, node.status)) summary[node.status]++
     })
     return summary
   }

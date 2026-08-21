@@ -1,7 +1,12 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, Save, AlertTriangle, Bell, Server, ToggleLeft, ToggleRight } from 'lucide-react'
+import {
+  Save, Bell, Server, RotateCcw,
+  Check, Sliders
+} from 'lucide-react'
 import { Card, Button } from '../ui'
+import { useAlertEngine } from '../../hooks/useFirebaseData.js'
+import { DEFAULT_THRESHOLDS, SYSTEM_NODES } from '../../services/alertEngine.js'
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const DS = {
@@ -16,53 +21,88 @@ const DS = {
   green:     '#2E9E6C',
 }
 
-/**
- * SettingsPage — Renders system preferences and thresholds.
- *
- * All settings are UI-only with local component state.
- * There is no write pattern/endpoint in dataSync.js or firebase.js for updating
- * thresholds, notification configs, or node active states in the backend.
- * Therefore, all save buttons are styled but disabled, clearly noted as "Awaiting backend wiring".
- */
 const SettingsPage = ({ className = '' }) => {
-  // --- Alert Thresholds Local State ---
-  const [thresholds, setThresholds] = useState({
-    leakRisk: 50,
-    theftRisk: 30,
-    pressure: 2.5, // Matches the 2.5 Bar default shown on Analytics/PressureChart
+  const { thresholds, updateThresholds } = useAlertEngine()
+
+  // Local working copy for editing
+  const [localThresholds, setLocalThresholds] = useState({ ...thresholds })
+  const [savedSuccess, setSavedSuccess] = useState(false)
+
+  // Notifications State (persisted in localStorage)
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const raw = localStorage.getItem('hydrosense_notifications_v2')
+      return raw ? JSON.parse(raw) : { email: true, sms: false, push: true, emailAddress: 'admin@hydrosense.net' }
+    } catch {
+      return { email: true, sms: false, push: true, emailAddress: 'admin@hydrosense.net' }
+    }
   })
 
-  // --- Notifications Local State ---
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: false,
-    push: true,
+  // Nodes Configuration State (exactly 3 nodes)
+  const [nodes, setNodes] = useState(() => {
+    try {
+      const raw = localStorage.getItem('hydrosense_nodes_v2')
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    return SYSTEM_NODES.map(n => ({
+      id: n.id,
+      name: n.name,
+      zone: n.zone,
+      active: true
+    }))
   })
 
-  // --- Nodes Local State ---
-  const [nodes, setNodes] = useState([
-    { id: 'NODE-01', active: true, zone: 'Zone A - Main Pipe' },
-    { id: 'NODE-02', active: true, zone: 'Zone A - Branch 1' },
-    { id: 'NODE-03', active: true, zone: 'Zone B - Commercial' },
-    { id: 'NODE-04', active: false, zone: 'Zone B - Residential' },
-    { id: 'NODE-05', active: true, zone: 'Zone C - Supply In' },
-    { id: 'NODE-06', active: true, zone: 'Zone C - Storage' },
-  ])
+  // ── Handlers ────────────────────────────────────────────────────────────────
+  const handleThresholdValueChange = (key, val) => {
+    setLocalThresholds(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        value: typeof val === 'number' ? val : parseFloat(val) || 0
+      }
+    }))
+  }
 
-  // Handlers
-  const handleThresholdChange = (key, val) => {
-    setThresholds(prev => ({ ...prev, [key]: val }))
+  const toggleThresholdEnabled = (key) => {
+    setLocalThresholds(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        enabled: !prev[key].enabled
+      }
+    }))
+  }
+
+  const handleSaveThresholds = () => {
+    updateThresholds(localThresholds)
+    setSavedSuccess(true)
+    setTimeout(() => setSavedSuccess(false), 3000)
+  }
+
+  const handleResetDefaults = () => {
+    setLocalThresholds({ ...DEFAULT_THRESHOLDS })
+    updateThresholds({ ...DEFAULT_THRESHOLDS })
+    setSavedSuccess(true)
+    setTimeout(() => setSavedSuccess(false), 3000)
   }
 
   const toggleNotification = (key) => {
-    setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
+    const updated = { ...notifications, [key]: !notifications[key] }
+    setNotifications(updated)
+    try {
+      localStorage.setItem('hydrosense_notifications_v2', JSON.stringify(updated))
+    } catch {}
   }
 
   const toggleNodeActive = (id) => {
-    setNodes(prev => prev.map(node => node.id === id ? { ...node, active: !node.active } : node))
+    const updated = nodes.map(n => n.id === id ? { ...n, active: !n.active } : n)
+    setNodes(updated)
+    try {
+      localStorage.setItem('hydrosense_nodes_v2', JSON.stringify(updated))
+    } catch {}
   }
 
-  // Switch Toggle Helper Component (styled cleanly per design system)
+  // Toggle Switch Component
   const ToggleSwitch = ({ checked, onChange }) => (
     <button
       type="button"
@@ -90,266 +130,461 @@ const SettingsPage = ({ className = '' }) => {
       transition={{ duration: 0.4 }}
     >
       {/* ── Page Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-5">
+      <div className="flex items-start justify-between mb-6">
         <div>
           <h2
             className="text-base font-semibold text-hs-ink mb-0.5"
             style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
           >
-            Settings
+            System Settings &amp; Thresholds
           </h2>
-          <p
-            className="text-xs text-hs-muted"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            System preferences &amp; thresholds
+          <p className="text-xs text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Configure real-time alert triggers for the 3 pipeline monitoring nodes
           </p>
         </div>
+
+        {savedSuccess && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#E8F5EE] text-[#2E9E6C] text-xs font-semibold"
+          >
+            <Check className="w-3.5 h-3.5" />
+            Settings Applied &amp; Live
+          </motion.div>
+        )}
       </div>
 
       <div className="space-y-6">
-        {/* ── Section 1: Alert Thresholds ───────────────────────────────────── */}
+
+        {/* ── Section 1: Alert Thresholds Matrix ─────────────────────────────── */}
         <Card variant="default" animate={false}>
           <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-4 h-4" style={{ color: DS.teal }} />
-              <h3
-                className="text-sm font-semibold text-hs-ink"
-                style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-hs-teal" />
+                <h3
+                  className="text-sm font-semibold text-hs-ink"
+                  style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+                >
+                  Alert Trigger Thresholds
+                </h3>
+              </div>
+              <button
+                onClick={handleResetDefaults}
+                className="flex items-center gap-1 text-xs text-hs-muted hover:text-hs-ink font-medium"
               >
-                Alert Thresholds
-              </h3>
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset Defaults
+              </button>
             </div>
 
-            <div className="space-y-5 max-w-xl">
-              {/* Leak Risk Trigger */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label
-                    className="text-xs font-medium text-hs-ink"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    Leak Risk Trigger (%)
-                  </label>
-                  <span
-                    className="text-xs font-semibold text-hs-teal"
-                    style={{ fontFamily: 'JetBrains Mono, monospace' }}
-                  >
-                    {thresholds.leakRisk}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={thresholds.leakRisk}
-                  onChange={(e) => handleThresholdChange('leakRisk', parseInt(e.target.value))}
-                  className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: DS.teal }}
-                />
-                <span className="text-[10px] text-hs-muted block mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  Triggers leakage alerts when AI analysis risk exceeds this level.
-                </span>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-              {/* Theft Risk Trigger */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label
-                    className="text-xs font-medium text-hs-ink"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    Theft Risk Trigger (%)
-                  </label>
-                  <span
-                    className="text-xs font-semibold text-hs-teal"
-                    style={{ fontFamily: 'JetBrains Mono, monospace' }}
-                  >
-                    {thresholds.theftRisk}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={thresholds.theftRisk}
-                  onChange={(e) => handleThresholdChange('theftRisk', parseInt(e.target.value))}
-                  className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: DS.teal }}
-                />
-                <span className="text-[10px] text-hs-muted block mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  Triggers alert when nighttime usage anomaly probability exceeds this level.
-                </span>
-              </div>
-
-              {/* Pressure Threshold */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label
-                    className="text-xs font-medium text-hs-ink"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    Critical Low Pressure Boundary (Bar)
-                  </label>
-                  <span
-                    className="text-xs font-semibold text-hs-teal"
-                    style={{ fontFamily: 'JetBrains Mono, monospace' }}
-                  >
-                    {thresholds.pressure.toFixed(1)} Bar
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="5.0"
-                  step="0.1"
-                  value={thresholds.pressure}
-                  onChange={(e) => handleThresholdChange('pressure', parseFloat(e.target.value))}
-                  className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: DS.teal }}
-                />
-                <span className="text-[10px] text-hs-muted block mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  Baseline alarm marker. Current threshold set to {thresholds.pressure.toFixed(1)} Bar.
-                </span>
-              </div>
-            </div>
-
-            {/* Section Footer: Disabled Save button with backend notice */}
-            <div className="mt-6 pt-4 border-t border-hs-border flex items-center justify-between">
-              <span className="text-[10px] text-hs-red font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                ⚠️ Awaiting backend wiring (UI-only state)
-              </span>
-              <Button variant="primary" size="sm" disabled={true} className="opacity-50 cursor-not-allowed">
-                <Save className="w-3.5 h-3.5 mr-1" />
-                Save Thresholds
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* ── Section 2: Notifications ───────────────────────────────────────── */}
-        <Card variant="default" animate={false}>
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Bell className="w-4 h-4" style={{ color: DS.teal }} />
-              <h3
-                className="text-sm font-semibold text-hs-ink"
-                style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
-              >
-                Notifications
-              </h3>
-            </div>
-
-            <div className="space-y-4 max-w-md">
-              {/* Email Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-medium text-hs-ink block" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Email Notifications
-                  </span>
-                  <span className="text-[10px] text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Send immediate reports to admin@hydrosense.net
-                  </span>
-                </div>
-                <ToggleSwitch checked={notifications.email} onChange={() => toggleNotification('email')} />
-              </div>
-
-              {/* SMS Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-medium text-hs-ink block" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    SMS Alerts
-                  </span>
-                  <span className="text-[10px] text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Text messages for critical alerts (e.g. pressure drops)
-                  </span>
-                </div>
-                <ToggleSwitch checked={notifications.sms} onChange={() => toggleNotification('sms')} />
-              </div>
-
-              {/* Push Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-medium text-hs-ink block" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Browser Push Notifications
-                  </span>
-                  <span className="text-[10px] text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    System dashboard toast notifications
-                  </span>
-                </div>
-                <ToggleSwitch checked={notifications.push} onChange={() => toggleNotification('push')} />
-              </div>
-            </div>
-
-            {/* Section Footer: Disabled Save button with backend notice */}
-            <div className="mt-6 pt-4 border-t border-hs-border flex items-center justify-between">
-              <span className="text-[10px] text-hs-red font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                ⚠️ Awaiting backend wiring (UI-only state)
-              </span>
-              <Button variant="primary" size="sm" disabled={true} className="opacity-50 cursor-not-allowed">
-                <Save className="w-3.5 h-3.5 mr-1" />
-                Save Preferences
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* ── Section 3: Nodes & Zones ───────────────────────────────────────── */}
-        <Card variant="default" animate={false}>
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Server className="w-4 h-4" style={{ color: DS.teal }} />
-              <h3
-                className="text-sm font-semibold text-hs-ink"
-                style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
-              >
-                Nodes &amp; Zones
-              </h3>
-            </div>
-
-            <div className="divide-y divide-hs-border border border-hs-border rounded-lg overflow-hidden bg-white max-w-xl">
-              {nodes.map(node => (
-                <div key={node.id} className="flex items-center justify-between p-3">
-                  <div>
-                    <span
-                      className="text-xs font-semibold text-hs-ink block"
-                      style={{ fontFamily: 'JetBrains Mono, monospace' }}
-                    >
-                      {node.id}
-                    </span>
-                    <span className="text-[10px] text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      {node.zone}
-                    </span>
+              {/* NODE-02: Flow Differential / Leakage Limit */}
+              {localThresholds.maxLeakageDelta && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-02
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.maxLeakageDelta.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.maxLeakageDelta.value.toFixed(1)} {localThresholds.maxLeakageDelta.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.maxLeakageDelta.enabled}
+                        onChange={() => toggleThresholdEnabled('maxLeakageDelta')}
+                      />
+                    </div>
                   </div>
+                  <input
+                    type="range"
+                    min={localThresholds.maxLeakageDelta.min}
+                    max={localThresholds.maxLeakageDelta.max}
+                    step={localThresholds.maxLeakageDelta.step}
+                    value={localThresholds.maxLeakageDelta.value}
+                    disabled={!localThresholds.maxLeakageDelta.enabled}
+                    onChange={(e) => handleThresholdValueChange('maxLeakageDelta', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.maxLeakageDelta.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-02: Minimum Line Pressure */}
+              {localThresholds.minPressure && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-02
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.minPressure.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.minPressure.value.toFixed(1)} {localThresholds.minPressure.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.minPressure.enabled}
+                        onChange={() => toggleThresholdEnabled('minPressure')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.minPressure.min}
+                    max={localThresholds.minPressure.max}
+                    step={localThresholds.minPressure.step}
+                    value={localThresholds.minPressure.value}
+                    disabled={!localThresholds.minPressure.enabled}
+                    onChange={(e) => handleThresholdValueChange('minPressure', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.minPressure.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-02: Maximum Line Pressure */}
+              {localThresholds.maxPressure && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-02
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.maxPressure.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.maxPressure.value.toFixed(1)} {localThresholds.maxPressure.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.maxPressure.enabled}
+                        onChange={() => toggleThresholdEnabled('maxPressure')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.maxPressure.min}
+                    max={localThresholds.maxPressure.max}
+                    step={localThresholds.maxPressure.step}
+                    value={localThresholds.maxPressure.value}
+                    disabled={!localThresholds.maxPressure.enabled}
+                    onChange={(e) => handleThresholdValueChange('maxPressure', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.maxPressure.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-01: Maximum Intake Flow */}
+              {localThresholds.maxFlowIn && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-01
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.maxFlowIn.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.maxFlowIn.value.toFixed(1)} {localThresholds.maxFlowIn.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.maxFlowIn.enabled}
+                        onChange={() => toggleThresholdEnabled('maxFlowIn')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.maxFlowIn.min}
+                    max={localThresholds.maxFlowIn.max}
+                    step={localThresholds.maxFlowIn.step}
+                    value={localThresholds.maxFlowIn.value}
+                    disabled={!localThresholds.maxFlowIn.enabled}
+                    onChange={(e) => handleThresholdValueChange('maxFlowIn', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.maxFlowIn.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-01: High Temperature */}
+              {localThresholds.highTemp && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-01
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.highTemp.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.highTemp.value.toFixed(1)} {localThresholds.highTemp.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.highTemp.enabled}
+                        onChange={() => toggleThresholdEnabled('highTemp')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.highTemp.min}
+                    max={localThresholds.highTemp.max}
+                    step={localThresholds.highTemp.step}
+                    value={localThresholds.highTemp.value}
+                    disabled={!localThresholds.highTemp.enabled}
+                    onChange={(e) => handleThresholdValueChange('highTemp', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.highTemp.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-03: Minimum Efficiency */}
+              {localThresholds.minEfficiency && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-03
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.minEfficiency.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.minEfficiency.value.toFixed(1)} {localThresholds.minEfficiency.unit}
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.minEfficiency.enabled}
+                        onChange={() => toggleThresholdEnabled('minEfficiency')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.minEfficiency.min}
+                    max={localThresholds.minEfficiency.max}
+                    step={localThresholds.minEfficiency.step}
+                    value={localThresholds.minEfficiency.value}
+                    disabled={!localThresholds.minEfficiency.enabled}
+                    onChange={(e) => handleThresholdValueChange('minEfficiency', e.target.value)}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.minEfficiency.description}
+                  </p>
+                </div>
+              )}
+
+              {/* NODE-02: Vibration / Tampering Trigger */}
+              {localThresholds.vibrationTamper && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        NODE-02
+                      </span>
+                      <span className="text-xs font-semibold text-hs-ink">
+                        Vibration &amp; Physical Tamper Protection
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-hs-muted">
+                      Trigger immediate critical alarm on unauthorized conduit physical disturbance.
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    checked={localThresholds.vibrationTamper.enabled}
+                    onChange={() => toggleThresholdEnabled('vibrationTamper')}
+                  />
+                </div>
+              )}
+
+              {/* Freshness Timeout */}
+              {localThresholds.commTimeout && (
+                <div className="p-4 bg-hs-bg rounded-lg border border-hs-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white border border-hs-border text-hs-teal">
+                        SYSTEM
+                      </span>
+                      <label className="text-xs font-semibold text-hs-ink">
+                        {localThresholds.commTimeout.metric}
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {localThresholds.commTimeout.value}s
+                      </span>
+                      <ToggleSwitch
+                        checked={localThresholds.commTimeout.enabled}
+                        onChange={() => toggleThresholdEnabled('commTimeout')}
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={localThresholds.commTimeout.min}
+                    max={localThresholds.commTimeout.max}
+                    step={localThresholds.commTimeout.step}
+                    value={localThresholds.commTimeout.value}
+                    disabled={!localThresholds.commTimeout.enabled}
+                    onChange={(e) => handleThresholdValueChange('commTimeout', parseInt(e.target.value))}
+                    className="w-full accent-hs-teal h-1.5 bg-hs-border rounded-lg cursor-pointer disabled:opacity-40"
+                  />
+                  <p className="text-[10px] text-hs-muted mt-1.5">
+                    {localThresholds.commTimeout.description}
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Save Button */}
+            <div className="mt-6 pt-4 border-t border-hs-border flex items-center justify-between">
+              <span className="text-xs text-hs-green font-medium flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-hs-green inline-block animate-pulse" />
+                Active live evaluation enabled
+              </span>
+              <Button variant="primary" size="sm" onClick={handleSaveThresholds}>
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                Save Active Thresholds
+              </Button>
+            </div>
+
+          </div>
+        </Card>
+
+        {/* ── Section 2: Exact 3 Nodes Management ─────────────────────────────── */}
+        <Card variant="default" animate={false}>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Server className="w-4 h-4 text-hs-teal" />
+              <h3
+                className="text-sm font-semibold text-hs-ink"
+                style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+              >
+                Configured Pipeline Nodes (Exactly 3)
+              </h3>
+            </div>
+
+            <div className="divide-y divide-hs-border border border-hs-border rounded-lg overflow-hidden bg-white">
+              {nodes.map(node => (
+                <div key={node.id} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <span
-                      className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      className="w-8 h-8 rounded-md bg-hs-bg flex items-center justify-center font-bold text-xs text-hs-teal border border-hs-border"
+                      style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                    >
+                      {node.id.split('-')[1]}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-hs-ink" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {node.name}
+                        </span>
+                        <span className="text-[10px] font-semibold text-hs-teal" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                          ({node.id})
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {node.zone}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
                       style={{
                         backgroundColor: node.active ? '#E8F5EE' : '#FDEAEA',
                         color: node.active ? DS.green : DS.red,
                         fontFamily: 'Inter, sans-serif',
                       }}
                     >
-                      {node.active ? 'Active' : 'Inactive'}
+                      {node.active ? 'Monitored' : 'Disabled'}
                     </span>
                     <ToggleSwitch checked={node.active} onChange={() => toggleNodeActive(node.id)} />
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        </Card>
 
-            {/* Section Footer: Disabled Save button with backend notice */}
-            <div className="mt-6 pt-4 border-t border-hs-border flex items-center justify-between">
-              <span className="text-[10px] text-hs-red font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                ⚠️ Awaiting backend wiring (UI-only state)
-              </span>
-              <Button variant="primary" size="sm" disabled={true} className="opacity-50 cursor-not-allowed">
-                <Save className="w-3.5 h-3.5 mr-1" />
-                Save Node Configurations
-              </Button>
+        {/* ── Section 3: Notification Preferences ────────────────────────────── */}
+        <Card variant="default" animate={false}>
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Bell className="w-4 h-4 text-hs-teal" />
+              <h3
+                className="text-sm font-semibold text-hs-ink"
+                style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+              >
+                Notification Preferences
+              </h3>
+            </div>
+
+            <div className="space-y-4 max-w-xl">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-hs-bg border border-hs-border">
+                <div>
+                  <span className="text-xs font-semibold text-hs-ink block">Email Notifications</span>
+                  <span className="text-[11px] text-hs-muted">Send immediate dispatch on critical leakage/theft</span>
+                </div>
+                <ToggleSwitch checked={notifications.email} onChange={() => toggleNotification('email')} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-hs-bg border border-hs-border">
+                <div>
+                  <span className="text-xs font-semibold text-hs-ink block">SMS Text Alerts</span>
+                  <span className="text-[11px] text-hs-muted">Emergency SMS alerts for pipe rupture or tamper</span>
+                </div>
+                <ToggleSwitch checked={notifications.sms} onChange={() => toggleNotification('sms')} />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-hs-bg border border-hs-border">
+                <div>
+                  <span className="text-xs font-semibold text-hs-ink block">Browser Toast Notifications</span>
+                  <span className="text-[11px] text-hs-muted">In-app live notification alerts</span>
+                </div>
+                <ToggleSwitch checked={notifications.push} onChange={() => toggleNotification('push')} />
+              </div>
             </div>
           </div>
         </Card>
+
       </div>
     </motion.div>
   )
