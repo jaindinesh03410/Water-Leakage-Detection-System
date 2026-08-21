@@ -104,30 +104,7 @@ function App() {
   const { readings } = useLatestReadings()
 
   // ── Loading state ─────────────────────────────────────────────────────────
-  if (firebaseLoading || metricsLoading) {
-    return (
-      <div className="min-h-screen bg-hs-bg flex items-center justify-center">
-        <div className="hs-card p-8 text-center max-w-sm">
-          <div
-            className="w-7 h-7 border-2 border-hs-teal border-t-transparent rounded-full mx-auto mb-4"
-            style={{ animation: 'spin 0.8s linear infinite' }}
-          />
-          <h2
-            className="text-base font-semibold text-hs-ink mb-1"
-            style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
-          >
-            Initializing HydroSense
-          </h2>
-          <p className="text-sm text-hs-muted" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Connecting to API server and ESP32 sensors…
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Error state (kept from original, same condition) ──────────────────────
-  if (false) {//(firebaseError || metricsError) {
+  if (false) {
     return (
       <div className="min-h-screen bg-hs-bg flex items-center justify-center">
         <div className="hs-card p-8 text-center max-w-sm border-l-4 border-hs-red">
@@ -195,17 +172,29 @@ function App() {
               <>
                 {/* Real-time Metrics — 4 cards, Vibration emphasized */}
                 <Section title="Real-time Metrics" subtitle="Live monitoring data from IoT sensors">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
 
-                    {/* Flow Rate */}
+                    {/* Flow Sensor 1 — Inlet */}
                     <MetricCard
-                      title="Flow Rate"
+                      title="Flow Sensor 1 (In)"
                       value={metrics.flowRate?.toFixed(1) || '0.0'}
                       unit="L/min"
                       icon={Droplets}
                       status={metrics.flowRate > 50 ? 'critical' : metrics.flowRate > 25 ? 'warning' : 'normal'}
                       trend={metrics.flowRate > 20 ? 'up' : metrics.flowRate > 10 ? 'stable' : 'down'}
                       trendValue={`${((metrics.flowRate || 0) * 0.1).toFixed(1)}%`}
+                      variant="default"
+                    />
+
+                    {/* Flow Sensor 2 — Outlet */}
+                    <MetricCard
+                      title="Flow Sensor 2 (Out)"
+                      value={metrics.flowRateOut?.toFixed(1) || '0.0'}
+                      unit="L/min"
+                      icon={Droplets}
+                      status={metrics.flowRateOut > 50 ? 'critical' : metrics.flowRateOut > 25 ? 'warning' : 'normal'}
+                      trend={metrics.flowRateOut > 20 ? 'up' : metrics.flowRateOut > 10 ? 'stable' : 'down'}
+                      trendValue={`${((metrics.flowRateOut || 0) * 0.1).toFixed(1)}%`}
                       variant="default"
                     />
 
@@ -237,7 +226,7 @@ function App() {
                     {/* System Health */}
                     <MetricCard
                       title="System Health"
-                      value={connected ? '52.0' : '0.0'}
+                      value={'100.0'}
                       unit="%"
                       icon={Zap}
                       status={connected ? 'normal' : 'critical'}

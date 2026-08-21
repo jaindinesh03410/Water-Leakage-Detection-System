@@ -3,7 +3,7 @@ const API_BASE = 'http://localhost:8000'
 const api = {
   get: async (endpoint) => {
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`)
+      const res = await fetch(`${API_BASE}${endpoint}`, { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return await res.json()
     } catch (error) {
@@ -18,16 +18,16 @@ export const initializeAuth = () => Promise.resolve({ uid: 'api-user' })
 const listeners = new Map()
 const intervals = new Map()
 
-const createPoller = (endpoint, callback, interval = 5000) => {
+const createPoller = (endpoint, callback, interval = 1000) => {
   const poll = async () => {
     const data = await api.get(endpoint)
     callback(data)
   }
-  
+
   poll()
   const id = setInterval(poll, interval)
   intervals.set(endpoint, id)
-  
+
   return () => {
     clearInterval(id)
     intervals.delete(endpoint)

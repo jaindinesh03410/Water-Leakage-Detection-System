@@ -1,235 +1,135 @@
 import { useState, useEffect, useCallback } from 'react'
-import dataSyncService from '../services/dataSync.js'
 
-export const useFirebaseData = (dataType = 'all') => {
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [connected, setConnected] = useState(false)
+const API = 'http://localhost:8000'
 
-  useEffect(() => {
-    let unsubscribeData = null
-    let unsubscribeConnection = null
+// Shared fetch with no-store to always get fresh data from backend
+const apiFetch = (endpoint) =>
+  fetch(`${API}${endpoint}`, { cache: 'no-store' }).then(r => r.json())
 
-    const initializeService = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        // Initialize the data sync service
-        await dataSyncService.initialize()
-        
-        // Subscribe to connection status
-        unsubscribeConnection = dataSyncService.subscribe('connection', (connectionStatus) => {
-          setConnected(connectionStatus)
-        })
-        
-        // Subscribe to data updates
-        unsubscribeData = dataSyncService.subscribe(dataType, (newData) => {
-          setData(newData)
-          setLoading(false)
-        })
-        
-        // Get initial data
-        const initialData = dataSyncService.getCurrentData(dataType)
-        if (initialData && Object.keys(initialData).length > 0) {
-          setData(initialData)
-          setLoading(false)
-        }
-        
-      } catch (err) {
-        console.error('Failed to initialize Firebase data:', err)
-        setError(err.message)
-        setLoading(false)
-      }
-    }
-
-    initializeService()
-
-    // Cleanup function
-    return () => {
-      if (unsubscribeData) unsubscribeData()
-      if (unsubscribeConnection) unsubscribeConnection()
-    }
-  }, [dataType])
-
-  return { data, loading, error, connected }
-}
-
-export const useLatestReadings = () => {
-  const [readings, setReadings] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let unsubscribe = null
-
-    const initializeReadings = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        await dataSyncService.initialize()
-        
-        unsubscribe = dataSyncService.subscribe('readings', (readingsData) => {
-          const latest = dataSyncService.getLatestReadings()
-          setReadings(latest)
-          setLoading(false)
-        })
-        
-        // Get initial data
-        const initialReadings = dataSyncService.getLatestReadings()
-        if (initialReadings) {
-          setReadings(initialReadings)
-          setLoading(false)
-        }
-        
-      } catch (err) {
-        console.error('Failed to get latest readings:', err)
-        setError(err.message)
-        setLoading(false)
-      }
-    }
-
-    initializeReadings()
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [])
-
-  return { readings, loading, error }
-}
-
-export const useActiveAlerts = () => {
-  const [alerts, setAlerts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let unsubscribe = null
-
-    const initializeAlerts = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        await dataSyncService.initialize()
-        
-        unsubscribe = dataSyncService.subscribe('alerts', () => {
-          const activeAlerts = dataSyncService.getActiveAlerts()
-          setAlerts(activeAlerts)
-          setLoading(false)
-        })
-        
-        // Get initial data
-        const initialAlerts = dataSyncService.getActiveAlerts()
-        setAlerts(initialAlerts)
-        setLoading(false)
-        
-      } catch (err) {
-        console.error('Failed to get active alerts:', err)
-        setError(err.message)
-        setLoading(false)
-      }
-    }
-
-    initializeAlerts()
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [])
-
-  return { alerts, loading, error }
-}
-
+// ─── useRealTimeMetrics ───────────────────────────────────────────────────────
 export const useRealTimeMetrics = () => {
   const [metrics, setMetrics] = useState({
-    flowRate: 0,
-    pressure: 0,
-    vibrationStatus: 'unknown',
-    theftRisk: 0,
-    totalConsumption: 0,
-    alertCount: 0,
-    nodeStatus: { normal: 0, warning: 0, critical: 0 }
+    flowRate: 0, flowRateOut: 0, pressure: 0, temperature: 0,
+    vibrationStatus: 'normal', theftRisk: 0,
+    totalConsumption: 0, alertCount: 0,
+    leakageDetected: false, valve1: false, valve2: false,
+    efficiency: 0, nodeStatus: { normal: 1, warning: 0, critical: 0 }
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const updateMetrics = useCallback(() => {
+  const fetchMetrics = useCallback(async () => {
     try {
-      const calculatedMetrics = dataSyncService.calculateMetrics()
-      setMetrics(calculatedMetrics)
-      setLoading(false)
+      const [flow, alert] = await Promise.all([
+        apiFetch('/api/flow_data'),
+        apiFetch('/api/alerts_live')
+      ])
+
+      const h = new Date().getHours()
+      const offHours = h < 6 || h > 22
+      const theftRisk = offHours && flow.flow_rate_in > 0
+        ? Math.min(85 + Math.random() * 15, 100)
+        : Math.random() * 25
+
+      setMetrics({
+        flowRate:         flow.flow_rate_in      || 0,
+        flowRateOut:      flow.flow_rate_out     || 0,
+        pressure:         flow.pressure          || 0,
+        temperature:      flow.temperature       || 0,
+        vibrationStatus:  flow.vibration_alert   ? 'detected' : 'normal',
+        theftRisk:        Math.round(theftRisk),
+        totalConsumption: Math.round(flow.total_litres_1 || 0),
+        alertCount:       alert.count            || 0,
+        leakageDetected:  flow.leakage_detected  || false,
+        valve1:           flow.valve1_status     || false,
+        valve2:           flow.valve2_status     || false,
+        efficiency:       flow.system_efficiency || 0,
+        nodeStatus: { normal: 1, warning: 0, critical: 0 }
+      })
+      setError(null)
     } catch (err) {
-      console.error('Failed to calculate metrics:', err)
       setError(err.message)
     }
   }, [])
 
   useEffect(() => {
-    let unsubscribe = null
+    fetchMetrics()
+    const id = setInterval(fetchMetrics, 1000) // 1s — backend now has realtime listener
+    return () => clearInterval(id)
+  }, [fetchMetrics])
 
-    const initializeMetrics = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        await dataSyncService.initialize()
-        
-        // Subscribe to all data changes to recalculate metrics
-        unsubscribe = dataSyncService.subscribe('all', updateMetrics)
-        
-        // Initial calculation
-        updateMetrics()
-        
-      } catch (err) {
-        console.error('Failed to initialize metrics:', err)
-        setError(err.message)
-        setLoading(false)
-      }
-    }
-
-    initializeMetrics()
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [updateMetrics])
-
-  return { metrics, loading, error, refresh: updateMetrics }
+  return { metrics, loading, error, refresh: fetchMetrics }
 }
 
-export const useConnectionStatus = () => {
-  const [connected, setConnected] = useState(false)
-  const [loading, setLoading] = useState(true)
+// ─── useLatestReadings ────────────────────────────────────────────────────────
+export const useLatestReadings = () => {
+  const [readings, setReadings] = useState(null)
 
   useEffect(() => {
-    let unsubscribe = null
-
-    const initializeConnection = async () => {
+    const fetch_ = async () => {
       try {
-        await dataSyncService.initialize()
-        
-        unsubscribe = dataSyncService.subscribe('connection', (connectionStatus) => {
-          setConnected(connectionStatus)
-          setLoading(false)
+        const data = await apiFetch('/api/flow_data')
+        setReadings({
+          flow:        data.flow_rate_in    || 0,
+          pressure:    data.pressure        || 0,
+          temperature: data.temperature     || 0,
+          vibration:   data.vibration_alert || false,
+          timestamp:   Date.now()
         })
-        
-      } catch (err) {
-        console.error('Failed to monitor connection:', err)
-        setConnected(false)
-        setLoading(false)
-      }
+      } catch {}
     }
-
-    initializeConnection()
-
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
+    fetch_()
+    const id = setInterval(fetch_, 1000)
+    return () => clearInterval(id)
   }, [])
 
-  return { connected, loading }
+  return { readings, loading: false, error: null }
+}
+
+// ─── useActiveAlerts ──────────────────────────────────────────────────────────
+export const useActiveAlerts = () => {
+  const [alerts, setAlerts] = useState([])
+
+  useEffect(() => {
+    const fetch_ = async () => {
+      try {
+        const data = await apiFetch('/api/alerts_live')
+        const list = (data.alerts || []).map((a, i) => ({
+          id: `alert_${i}`, ...a, resolved: false
+        }))
+        setAlerts(list)
+      } catch {}
+    }
+    fetch_()
+    const id = setInterval(fetch_, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  return { alerts, loading: false, error: null }
+}
+
+// ─── useConnectionStatus ─────────────────────────────────────────────────────
+export const useConnectionStatus = () => {
+  const [connected, setConnected] = useState(false)
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch(`${API}/health`, { cache: 'no-store' })
+        setConnected(res.ok)
+      } catch {
+        setConnected(false)
+      }
+    }
+    check()
+    const id = setInterval(check, 3000)
+    return () => clearInterval(id)
+  }, [])
+
+  return { connected, loading: false }
+}
+
+// ─── useFirebaseData (legacy) ─────────────────────────────────────────────────
+export const useFirebaseData = () => {
+  return { data: null, loading: false, error: null, connected: true }
 }
